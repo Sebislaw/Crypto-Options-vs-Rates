@@ -1,0 +1,23 @@
+# ============================================
+# Production Dependencies
+# ============================================
+
+# HTTP requests for Polymarket Gamma API
+requests==2.32.5
+
+# Timezone handling for ET to UTC conversions
+pytz==2025.2
+
+# WebSocket support for real-time market data
+websocket-client==1.9.0
+
+# Polymarket CLOB (Central Limit Order Book) API client
+py-clob-client==0.28.0
+
+
+# ============================================
+# Development & Testing Dependencies
+# ============================================
+
+# Unit testing framework
+pytest==9.0.1
