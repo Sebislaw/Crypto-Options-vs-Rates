@@ -3,9 +3,8 @@ Unit tests for data_ingestion/collectors/polymarket_clob.py
 """
 
 import unittest
-from unittest.mock import patch, Mock, MagicMock, call
+from unittest.mock import patch, Mock
 import json
-import time
 import sys
 from pathlib import Path
 

@@ -10,7 +10,8 @@ sys.path.insert(0, str(parent_dir))
 from configs.polymarket_config import (
     DEFAULT_LIMIT,
     GAMMA_API_BASE_URL,
-    FIFTEEN_MINUTE_EVENTS_SLUG_PREFIXES
+    FIFTEEN_MINUTE_EVENTS_SLUG_PREFIXES,
+    SUPPORTED_CRYPTOS
 )
 from data_ingestion.utils.time_utils import current_quarter_timestamp_et
 
@@ -74,12 +75,12 @@ def get_polymarket_events(
     return all_events
 
 
-def get_current_15m_events() -> List[Dict[str, Any]]:
+def get_current_15m_events() -> Dict[str, Any]:
     """
     Fetch current 15-minute crypto events from Polymarket.
     
     Returns:
-        list: List of current 15-minute event dictionaries.
+        Dict[str, Any]: Dictionary of current 15-minute event dictionaries.
     """
 
     url_base = GAMMA_API_BASE_URL + "/events/slug/"
@@ -91,7 +92,7 @@ def get_current_15m_events() -> List[Dict[str, Any]]:
     return result
 
 
-def get_club_token_ids_from_15m_events() -> List[str]:
+def get_club_token_ids_from_15m_events() -> Dict[str, List[str]]:
     """
     Extract CLOB token IDs from current 15-minute events.
     
@@ -101,7 +102,7 @@ def get_club_token_ids_from_15m_events() -> List[str]:
     fifteen_minute_events = get_current_15m_events()
     clob_token_ids = {}
     
-    for crypto in 'btc', 'eth', 'sol', 'xrp':
+    for crypto in SUPPORTED_CRYPTOS:
         # Parse the JSON string to get actual list
         token_ids_str = fifteen_minute_events[crypto]['markets'][0]['clobTokenIds']
         clob_token_ids[crypto] = json.loads(token_ids_str)

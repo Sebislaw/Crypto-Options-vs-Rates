@@ -39,7 +39,6 @@ CRYPTO_KEYWORDS = [
     'ftx',
     'opensea',
     'metamask',
-    'uniswap',
     'aave',
     'compound',
     'synthetix',
@@ -60,6 +59,8 @@ SLUG_PREFIX_TO_CRYPTO_NAME = {
     "sol-updown-15m-": "SOL",
     "xrp-updown-15m-": "XRP"
 }
+
+SUPPORTED_CRYPTOS = ['btc', 'eth', 'sol', 'xrp']
 
 # Gamma API configuration
 GAMMA_API_BASE_URL = "https://gamma-api.polymarket.com"

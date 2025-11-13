@@ -1,4 +1,3 @@
-from py_clob_client.client import ClobClient
 from websocket import WebSocketApp
 import json
 import time
@@ -12,15 +11,11 @@ sys.path.insert(0, str(parent_dir))
 
 from data_ingestion.collectors.polymarket_gamma import get_club_token_ids_from_15m_events
 from configs.polymarket_config import (
-    CLOB_API_BASE_URL,
     MARKET_CHANNEL,
     WEBSOCKET_URL,
     WEBSOCKET_PING_INTERVAL
 )
 from data_ingestion.utils.time_utils import current_quarter_timestamp_et
-
-
-client = ClobClient(CLOB_API_BASE_URL)  # Level 0 (no auth)
 
 
 class WebSocketOrderBook:
@@ -41,11 +36,9 @@ class WebSocketOrderBook:
             on_close=self.on_close,
             on_open=self.on_open,
         )
-        self.orderbooks = {}
 
     def on_message(self, ws: WebSocketApp, message: str):
         print(message)
-        pass
 
     def on_error(self, ws: WebSocketApp, error: str):
         print("Error: ", error)

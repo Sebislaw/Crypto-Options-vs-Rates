@@ -3,7 +3,7 @@ Unit tests for data_ingestion/utils/time_utils.py
 """
 
 import unittest
-from unittest.mock import patch, Mock
+from unittest.mock import patch
 from datetime import datetime as real_datetime
 import pytz
 import sys

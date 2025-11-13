@@ -3,7 +3,7 @@ Unit tests for data_ingestion/collectors/polymarket_gamma.py
 """
 
 import unittest
-from unittest.mock import patch, Mock, MagicMock
+from unittest.mock import patch, Mock
 import json
 import sys
 from pathlib import Path
