@@ -23,6 +23,7 @@ async def main():
     
     # 2. Start Real-time Stream
     logger.info("Starting real-time stream...")
+    stream_task = None
     try:
         # Create a task for the stream
         stream_task = asyncio.create_task(stream_ingestor.start_stream())
@@ -32,7 +33,11 @@ async def main():
     except KeyboardInterrupt:
         logger.info("Stopping stream...")
         stream_ingestor.stop()
-        await stream_task # Wait for cleanup
+        if stream_task:
+            try:
+                await stream_task # Wait for cleanup
+            except Exception as e:
+                logger.error(f"Error during stream cleanup: {e}")
     except Exception as e:
         logger.critical(f"Stream failed: {e}")
 
@@ -40,4 +45,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        pass
+        logger.info("Program interrupted by user.")

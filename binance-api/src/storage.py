@@ -1,8 +1,6 @@
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
-from pathlib import Path
-from datetime import datetime
 from loguru import logger
 from config import settings
 
@@ -25,13 +23,11 @@ class StorageManager:
         # Add date column for partitioning
         df['date'] = df['timestamp'].dt.date.astype(str)
 
-        # Define table
-        table = pa.Table.from_pandas(df)
-        file_name = f"{datetime.now().timestamp()}.parquet"
-        
+        # Add symbol column if missing before table conversion
         if 'symbol' not in df.columns:
             df['symbol'] = symbol
-            
+        
+        # Define table
         table = pa.Table.from_pandas(df)
         
         try:
