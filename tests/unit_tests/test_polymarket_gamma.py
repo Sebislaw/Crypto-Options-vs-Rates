@@ -12,7 +12,7 @@ from pathlib import Path
 parent_dir = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(parent_dir))
 
-from data_ingestion.collectors.polymarket_gamma import (
+from ingestion_layer.polymarket.polymarket_gamma import (
     get_polymarket_events,
     get_current_15m_events,
     get_club_token_ids_from_15m_events
@@ -22,7 +22,7 @@ from data_ingestion.collectors.polymarket_gamma import (
 class TestGetPolymarketEvents(unittest.TestCase):
     """Test suite for get_polymarket_events function."""
 
-    @patch('data_ingestion.collectors.polymarket_gamma.requests.get')
+    @patch('ingestion_layer.polymarket.polymarket_gamma.requests.get')
     def test_get_events_single_page(self, mock_get):
         """Test fetching events with single page response."""
         # Mock response data
@@ -42,7 +42,7 @@ class TestGetPolymarketEvents(unittest.TestCase):
         self.assertEqual(len(result), 2)
         mock_get.assert_called_once()
 
-    @patch('data_ingestion.collectors.polymarket_gamma.requests.get')
+    @patch('ingestion_layer.polymarket.polymarket_gamma.requests.get')
     def test_get_events_multiple_pages(self, mock_get):
         """Test fetching events with pagination."""
         # Mock responses for multiple pages
@@ -64,7 +64,7 @@ class TestGetPolymarketEvents(unittest.TestCase):
         self.assertEqual(len(result), 75)
         self.assertEqual(mock_get.call_count, 2)
 
-    @patch('data_ingestion.collectors.polymarket_gamma.requests.get')
+    @patch('ingestion_layer.polymarket.polymarket_gamma.requests.get')
     def test_get_events_with_max_events(self, mock_get):
         """Test fetching events with max_events limit."""
         # Mock response with more events than max_events
@@ -79,7 +79,7 @@ class TestGetPolymarketEvents(unittest.TestCase):
         
         self.assertEqual(len(result), 25)
 
-    @patch('data_ingestion.collectors.polymarket_gamma.requests.get')
+    @patch('ingestion_layer.polymarket.polymarket_gamma.requests.get')
     def test_get_events_empty_response(self, mock_get):
         """Test handling of empty response."""
         mock_response = Mock()
@@ -91,7 +91,7 @@ class TestGetPolymarketEvents(unittest.TestCase):
         
         self.assertEqual(result, [])
 
-    @patch('data_ingestion.collectors.polymarket_gamma.requests.get')
+    @patch('ingestion_layer.polymarket.polymarket_gamma.requests.get')
     def test_get_events_with_closed_filter_true(self, mock_get):
         """Test fetching closed events."""
         mock_events = [{'id': '1', 'closed': True}]
@@ -108,7 +108,7 @@ class TestGetPolymarketEvents(unittest.TestCase):
         self.assertEqual(call_args[1]['params']['closed'], 'true')
         self.assertEqual(result, mock_events)
 
-    @patch('data_ingestion.collectors.polymarket_gamma.requests.get')
+    @patch('ingestion_layer.polymarket.polymarket_gamma.requests.get')
     def test_get_events_with_closed_filter_false(self, mock_get):
         """Test fetching open events."""
         mock_events = [{'id': '1', 'closed': False}]
@@ -125,7 +125,7 @@ class TestGetPolymarketEvents(unittest.TestCase):
         self.assertEqual(call_args[1]['params']['closed'], 'false')
         self.assertEqual(result, mock_events)
 
-    @patch('data_ingestion.collectors.polymarket_gamma.requests.get')
+    @patch('ingestion_layer.polymarket.polymarket_gamma.requests.get')
     def test_get_events_with_closed_filter_none(self, mock_get):
         """Test fetching all events (no closed filter)."""
         mock_events = [{'id': '1'}, {'id': '2'}]
@@ -142,7 +142,7 @@ class TestGetPolymarketEvents(unittest.TestCase):
         self.assertNotIn('closed', call_args[1]['params'])
         self.assertEqual(result, mock_events)
 
-    @patch('data_ingestion.collectors.polymarket_gamma.requests.get')
+    @patch('ingestion_layer.polymarket.polymarket_gamma.requests.get')
     def test_get_events_http_error(self, mock_get):
         """Test handling of HTTP errors."""
         mock_response = Mock()
@@ -152,7 +152,7 @@ class TestGetPolymarketEvents(unittest.TestCase):
         with self.assertRaises(Exception):
             get_polymarket_events()
 
-    @patch('data_ingestion.collectors.polymarket_gamma.requests.get')
+    @patch('ingestion_layer.polymarket.polymarket_gamma.requests.get')
     @patch('builtins.print')
     def test_get_events_pagination_progress_print(self, mock_print, mock_get):
         """Test that pagination progress is printed."""
@@ -174,7 +174,7 @@ class TestGetPolymarketEvents(unittest.TestCase):
         # Verify progress was printed
         mock_print.assert_called()
 
-    @patch('data_ingestion.collectors.polymarket_gamma.requests.get')
+    @patch('ingestion_layer.polymarket.polymarket_gamma.requests.get')
     def test_get_events_pagination_offset_increment(self, mock_get):
         """Test that offset is correctly incremented during pagination."""
         page1 = [{'id': str(i)} for i in range(50)]
@@ -207,8 +207,8 @@ class TestGetPolymarketEvents(unittest.TestCase):
 class TestGetCurrent15mEvents(unittest.TestCase):
     """Test suite for get_current_15m_events function."""
 
-    @patch('data_ingestion.collectors.polymarket_gamma.current_quarter_timestamp_et')
-    @patch('data_ingestion.collectors.polymarket_gamma.requests.get')
+    @patch('ingestion_layer.polymarket.polymarket_gamma.current_quarter_timestamp_et')
+    @patch('ingestion_layer.polymarket.polymarket_gamma.requests.get')
     def test_get_current_15m_events_success(self, mock_get, mock_timestamp):
         """Test successful fetching of 15-minute events."""
         mock_timestamp.return_value = 1234567890
@@ -242,8 +242,8 @@ class TestGetCurrent15mEvents(unittest.TestCase):
         # Verify correct number of requests
         self.assertEqual(mock_get.call_count, 4)
 
-    @patch('data_ingestion.collectors.polymarket_gamma.current_quarter_timestamp_et')
-    @patch('data_ingestion.collectors.polymarket_gamma.requests.get')
+    @patch('ingestion_layer.polymarket.polymarket_gamma.current_quarter_timestamp_et')
+    @patch('ingestion_layer.polymarket.polymarket_gamma.requests.get')
     def test_get_current_15m_events_url_construction(self, mock_get, mock_timestamp):
         """Test that URLs are constructed correctly."""
         mock_timestamp.return_value = 1700000000
@@ -261,8 +261,8 @@ class TestGetCurrent15mEvents(unittest.TestCase):
         self.assertTrue(calls[2][0][0].endswith('sol-updown-15m-1700000000'))
         self.assertTrue(calls[3][0][0].endswith('xrp-updown-15m-1700000000'))
 
-    @patch('data_ingestion.collectors.polymarket_gamma.current_quarter_timestamp_et')
-    @patch('data_ingestion.collectors.polymarket_gamma.requests.get')
+    @patch('ingestion_layer.polymarket.polymarket_gamma.current_quarter_timestamp_et')
+    @patch('ingestion_layer.polymarket.polymarket_gamma.requests.get')
     def test_get_current_15m_events_http_error(self, mock_get, mock_timestamp):
         """Test handling of HTTP errors."""
         mock_timestamp.return_value = 1234567890
@@ -276,7 +276,7 @@ class TestGetCurrent15mEvents(unittest.TestCase):
 class TestGetClubTokenIdsFrom15mEvents(unittest.TestCase):
     """Test suite for get_club_token_ids_from_15m_events function."""
 
-    @patch('data_ingestion.collectors.polymarket_gamma.get_current_15m_events')
+    @patch('ingestion_layer.polymarket.polymarket_gamma.get_current_15m_events')
     def test_get_club_token_ids_success(self, mock_get_events):
         """Test successful extraction of CLOB token IDs."""
         # Mock event data with JSON-encoded clobTokenIds
@@ -319,7 +319,7 @@ class TestGetClubTokenIdsFrom15mEvents(unittest.TestCase):
         self.assertEqual(result['sol'], ['sol-token-1', 'sol-token-2'])
         self.assertEqual(result['xrp'], ['xrp-token-1', 'xrp-token-2'])
 
-    @patch('data_ingestion.collectors.polymarket_gamma.get_current_15m_events')
+    @patch('ingestion_layer.polymarket.polymarket_gamma.get_current_15m_events')
     def test_get_club_token_ids_empty_token_list(self, mock_get_events):
         """Test handling of empty token lists."""
         mock_events = {
@@ -338,7 +338,7 @@ class TestGetClubTokenIdsFrom15mEvents(unittest.TestCase):
         self.assertEqual(result['sol'], [])
         self.assertEqual(result['xrp'], [])
 
-    @patch('data_ingestion.collectors.polymarket_gamma.get_current_15m_events')
+    @patch('ingestion_layer.polymarket.polymarket_gamma.get_current_15m_events')
     def test_get_club_token_ids_single_token(self, mock_get_events):
         """Test extraction with single token per crypto."""
         mock_events = {
@@ -357,7 +357,7 @@ class TestGetClubTokenIdsFrom15mEvents(unittest.TestCase):
         self.assertEqual(result['sol'], ['sol-single'])
         self.assertEqual(result['xrp'], ['xrp-single'])
 
-    @patch('data_ingestion.collectors.polymarket_gamma.get_current_15m_events')
+    @patch('ingestion_layer.polymarket.polymarket_gamma.get_current_15m_events')
     def test_get_club_token_ids_invalid_json(self, mock_get_events):
         """Test handling of invalid JSON in clobTokenIds."""
         mock_events = {
@@ -372,7 +372,7 @@ class TestGetClubTokenIdsFrom15mEvents(unittest.TestCase):
         with self.assertRaises(json.JSONDecodeError):
             get_club_token_ids_from_15m_events()
 
-    @patch('data_ingestion.collectors.polymarket_gamma.get_current_15m_events')
+    @patch('ingestion_layer.polymarket.polymarket_gamma.get_current_15m_events')
     def test_get_club_token_ids_missing_markets_key(self, mock_get_events):
         """Test handling of missing 'markets' key."""
         mock_events = {
@@ -387,7 +387,7 @@ class TestGetClubTokenIdsFrom15mEvents(unittest.TestCase):
         with self.assertRaises(KeyError):
             get_club_token_ids_from_15m_events()
 
-    @patch('data_ingestion.collectors.polymarket_gamma.get_current_15m_events')
+    @patch('ingestion_layer.polymarket.polymarket_gamma.get_current_15m_events')
     def test_get_club_token_ids_empty_markets_list(self, mock_get_events):
         """Test handling of empty markets list."""
         mock_events = {
