@@ -1,4 +1,3 @@
-import asyncio
 import pandas as pd
 from binance import AsyncClient
 from loguru import logger
@@ -6,6 +5,27 @@ from config import settings
 from src.storage import storage
 
 class HistoricalFetcher:
+    """
+    Fetches historical kline data from Binance.
+    
+    Binance kline format reference:
+    [
+      [
+        1499040000000,      // Open time
+        "0.01634790",       // Open
+        "0.80000000",       // High
+        "0.01575800",       // Low
+        "0.01577100",       // Close
+        "148976.11427815",  // Volume
+        1499644799999,      // Close time
+        "2434.19055334",    // Quote asset volume
+        308,                // Number of trades
+        "1756.87402397",    // Taker buy base asset volume
+        "28.46694368",      // Taker buy quote asset volume
+        "17928899.62484339" // Ignore.
+      ]
+    ]
+    """
     def __init__(self):
         self.client = None
 
@@ -34,24 +54,6 @@ class HistoricalFetcher:
             if not klines:
                 logger.warning(f"No data found for {symbol}")
                 return
-
-            # Binance kline format:
-            # [
-            #   [
-            #     1499040000000,      // Open time
-            #     "0.01634790",       // Open
-            #     "0.80000000",       // High
-            #     "0.01575800",       // Low
-            #     "0.01577100",       // Close
-            #     "148976.11427815",  // Volume
-            #     1499644799999,      // Close time
-            #     "2434.19055334",    // Quote asset volume
-            #     308,                // Number of trades
-            #     "1756.87402397",    // Taker buy base asset volume
-            #     "28.46694368",      // Taker buy quote asset volume
-            #     "17928899.62484339" // Ignore.
-            #   ]
-            # ]
             
             columns = [
                 'timestamp', 'open', 'high', 'low', 'close', 'volume',

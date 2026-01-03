@@ -9,14 +9,15 @@ class Settings(BaseSettings):
     # Data Configuration
     SYMBOLS: list[str] = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"]
     HISTORICAL_INTERVAL: str = "1m"
-    STREAM_INTERVAL: str = "1s"
+    STREAM_INTERVAL: str = "1m"
     
     # Storage
     BASE_DIR: Path = Path(__file__).parent
     DATA_DIR: Path = BASE_DIR / "data"
     
     # Streaming
-    BUFFER_SIZE: int = 4  # Number of records to buffer before writing
+    BUFFER_SIZE: int = 100  # Number of records to buffer before writing (increase for better performance)
+    SNAPSHOT_INTERVAL_SECONDS: int = 1  # Interval for sampling real-time data snapshots
     
     class Config:
         env_file = ".env"

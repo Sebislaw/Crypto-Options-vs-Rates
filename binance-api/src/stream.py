@@ -26,9 +26,9 @@ class StreamIngestor:
         logger.info(f"Starting stream for: {streams}")
         
         retry_count = 0
-        max_retries = 2
+        max_attempts = 3
         
-        while retry_count <= max_retries and not self.stop_event.is_set():
+        while retry_count < max_attempts and not self.stop_event.is_set():
             try:
                 ts = bm.multiplex_socket(streams)
                 async with ts as tscm:
@@ -48,12 +48,12 @@ class StreamIngestor:
                             raise e # Trigger reconnection
                             
             except Exception as e:
-                logger.error(f"Connection failed (attempt {retry_count + 1}/{max_retries + 1}): {e}")
+                logger.error(f"Connection failed (attempt {retry_count + 1}/{max_attempts}): {e}")
                 retry_count += 1
-                if retry_count <= max_retries:
+                if retry_count < max_attempts:
                     await asyncio.sleep(2) # Wait before retrying
                 else:
-                    logger.critical("Max retries reached. Exiting stream.")
+                    logger.critical("Max attempts reached. Exiting stream.")
                     raise e
 
         await client.close_connection()
@@ -74,8 +74,8 @@ class StreamIngestor:
         current_time = time.time()
         last_time = self.last_snapshot_time.get(symbol, 0)
         
-        # Sample every 1 second OR if candle closed
-        if kline['x'] or (current_time - last_time >= 1):
+        # Sample at configured interval OR if candle closed
+        if kline['x'] or (current_time - last_time >= settings.SNAPSHOT_INTERVAL_SECONDS):
             record = {
                 'timestamp': kline['t'], # Open time
                 'snapshot_time': int(current_time * 1000), # Capture time
@@ -97,9 +97,9 @@ class StreamIngestor:
             self.last_snapshot_time[symbol] = current_time
             
             if len(self.buffer) >= self.buffer_limit:
-                await self.flush_buffer()
+                self.flush_buffer()
 
-    async def flush_buffer(self):
+    def flush_buffer(self):
         if not self.buffer:
             return
             
