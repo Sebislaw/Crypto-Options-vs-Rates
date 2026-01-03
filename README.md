@@ -7,16 +7,12 @@ This repository contains a Big Data project about integrating Polymarket predict
 ## Repository structure
 
 ### `deployment/`
-Orchestration and build hub for the system:
-- **`docker-compose.yml`** – Definition of all **14 containers**, including networks and volumes.
-- **`binance-collector/`** – Dockerfile for `ingestion-binance-collector`.
-- **`polymarket-collector/`** – Dockerfile for `ingestion-polymarket-collector`.
-- **`spark-base/`** – Shared Dockerfile for all Spark-related processing units.
+VM provisioning and operational notes for running services on local virtual machines or developer hosts. See `deployment/README.md` for provisioning and key usage.
 
 ### `ingestion_layer/`
 Contains all components responsible for **data acquisition** and **initial ingestion**:
-- **`binance/`** – Source code for the `ingestion-binance-collector` container.
-- **`polymarket/`** – Source code for the `ingestion-polymarket-collector` container.
+- **`binance/`** – Source code for the `ingestion-binance-collector` collector.
+- **`polymarket/`** – Source code for the `ingestion-polymarket-collector` collector.
 - **`nifi/`** – NiFi templates implementing automated data flows (fetch, transform, push to Kafka).
 
 ### `batch_layer/`
@@ -65,30 +61,29 @@ Lists dependencies required for used technologies.
 
 
 ```text
-C:.
-├── .gitignore                  # Git exclusion rules
-├── README.md                   # Project overview
-├── deployment/                 # Docker orchestration and build instructions
-├── ingestion_layer/            # INGESTION LAYER
-│   ├── binance/                # Serves: ingestion-binance-collector
-│   ├── polymarket/             # Serves: ingestion-polymarket-collector
-│   └── nifi/                   # Serves: ingestion-nifi
-├── batch_layer/                # BATCH LAYER
-│   ├── hadoop/                 # Serves: batch-hdfs-namenode, batch-hdfs-datanode
-│   ├── hive/                   # Serves: batch-hive-metastore, batch-hive-server
-│   └── spark/                  # Serves: batch-spark-worker
-├── speed_layer/                # SPEED LAYER
-│   ├── kafka/                  # Serves: speed-kafka
-│   └── spark/                  # Serves: speed-spark-worker
-├── serving_layer/              # SERVING LAYER
-│   ├── hbase/                  # Serves: serving-hbase-master
-│   └── merge/                  # Serves: serving-hbase-regionserver
-├── configs/                    # Serves: shared-spark-master, shared-zookeeper
-├── console_scripts/            # Management and operational tools
-│   └── utils/
-├── report/                     # Project documentation
+root:
+├── .gitignore
+├── README.md
+├── deployment/
+├── ingestion_layer/
+│   ├── binance/
+│   ├── polymarket/
+│   └── nifi/
+├── batch_layer/
+│   ├── hadoop/
+│   ├── hive/
+│   └── spark/
+├── speed_layer/
+│   ├── kafka/
+│   └── spark/
+├── serving_layer/
+│   ├── hbase/
+│   └── merge/
+├── configs/
+├── console_scripts/
+├── report/
 │   └── assets/
-├── requirements/               # Global dependencies
-└── tests/                      # Testing suites
+├── requirements/
+└── tests/
     ├── functional_tests/
     └── unit_tests/

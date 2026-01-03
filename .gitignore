@@ -262,6 +262,8 @@ config/secrets.*
 *.credentials
 *.password
 *.token
+key
+*.ppk
 
 # --- Misc / backup files ---
 *.bak
