@@ -1,70 +1,298 @@
-Polymarket data — commands and example outputs
+# Polymarket 15-Minute Crypto Options WebSocket Streamer
 
-What data you can get
-- 15-minute event objects from the Gamma API (via `get_current_15m_events()` / `get_polymarket_events()`). Each event includes metadata keys such as `id`, `slug`, `title`, `markets`, `liquidity`, `volume`, and many others.
-- Per-event `markets` list: each market includes `id`, `question`, `outcomes`, `volume`, and `clobTokenIds` (see note below).
-- CLOB token IDs mapping: `get_club_token_ids_from_15m_events()` parses `clobTokenIds` and returns a dict mapping crypto keys (`'btc'`, `'eth'`, `'sol'`, `'xrp'`) to lists of CLOB token ID strings.
-- WebSocket order book feed: `WebSocketOrderBook` (in `polymarket_clob.py`) connects to Polymarket's CLOB websocket, sends an `assets_ids` subscription and prints raw messages from the orderbook channel.
-- Utility: `current_quarter_timestamp_et()` returns the UNIX timestamp (UTC seconds) for the start of the current 15-minute ET block.
+## Overview
 
-Commands and example outputs
-- List public symbols in `polymarket_clob`:
+This module provides **real-time WebSocket streaming of Polymarket's 15-minute crypto "Up or Down" options markets**. The main functionality is a self-reconnecting WebSocket client that automatically tracks the current 15-minute window and updates when new markets become available.
 
-  Command:
-  ```powershell
-  python -c "from ingestion_layer.polymarket import polymarket_clob; print([n for n in dir(polymarket_clob) if not n.startswith('_')])"
-  ```
+### Supported Cryptocurrencies
+- **BTC** (Bitcoin)
+- **ETH** (Ethereum)
+- **SOL** (Solana)
+- **XRP** (Ripple)
 
-  Example output (truncated):
-  ```text
-  ["List", "MARKET_CHANNEL", "Path", "WEBSOCKET_PING_INTERVAL", "WEBSOCKET_URL", "WebSocketApp\n", "WebSocketOrderBook", "current_quarter_timestamp_et", "get_club_token_ids_from_15m_events", "json", "parent_dir", "start_market_websocket_connection", "sys", "threading", "time"]
-  ```
+---
 
-- Inspect current 15-minute events (show top-level keys and market sample keys):
+## Quick Start
 
-  Command:
-  ```powershell
-  python -c "from ingestion_layer.polymarket.polymarket_gamma import get_current_15m_events; d=get_current_15m_events(); ks=list(d.keys()); print('top_keys:', ks); first=ks[0]; print('first_keys:', list(d[first].keys())); print('markets_sample_keys:', list(d[first]['markets'][0].keys()))"
-  ```
+### Run the WebSocket streamer for a specific crypto:
 
-  Example output (truncated):
-  ```text
-  top_keys: ['btc', 'eth', 'sol', 'xrp']
-  first_keys: ['id', 'ticker', 'slug', 'title', 'description', 'resolutionSource', 'startDate', 'creationDate', 'endDate', 'image', 'icon', 'active', 'closed', 'archived', 'new', 'featured', 'restricted', 'liquidity', 'volume', 'openInterest', 'createdAt', 'updatedAt', 'competitive', 'volume24hr', 'volume1wk', 'volume1mo', 'volume1yr', 'enableOrderBook', 'liquidityClob', 'negRisk', 'commentCount', 'markets', 'series', 'tags', 'cyom', 'showAllOutcomes', 'showMarketImages', 'enableNegRisk', 'automaticallyActive', 'startTime', 'seriesSlug', 'negRiskAugmented', 'pendingDeployment', 'deploying', 'requiresTranslation']
-  markets_sample_keys: ['id', 'question', 'conditionId', 'slug', 'resolutionSource', 'endDate', 'liquidity', 'startDate', 'image', 'icon', 'description', 'outcomes', 'outcomePrices', 'volume', 'active', 'closed', 'marketMakerAddress', 'createdAt', 'updatedAt', 'new', 'featured', 'archived', 'restricted', 'groupItemThreshold', 'questionID', 'enableOrderBook', 'orderPriceMinTickSize', 'orderMinSize', 'volumeNum', 'liquidityNum', 'endDateIso', 'startDateIso', 'hasReviewedDates', 'volume24hr', 'volume1wk', 'volume1mo', 'volume1yr', 'clobTokenIds', 'volume24hrClob', 'volume1wkClob', 'volume1moClob', 'volume1yrClob', 'volumeClob', 'liquidityClob', 'acceptingOrders', 'negRisk', 'ready', 'funded', 'acceptingOrdersTimestamp', 'cyom', 'competitive', 'pagerDutyNotificationEnabled', 'approved', 'rewardsMinSize', 'rewardsMaxSpread', 'spread', 'lastTradePrice', 'bestBid', 'bestAsk', 'automaticallyActive', 'clearBookOnStart', 'showGmpSeries', 'showGmpOutcome', 'manualActivation', 'negRiskOther', 'umaResolutionStatuses', 'pendingDeployment', 'deploying', 'rfqEnabled', 'eventStartTime', 'holdingRewardsEnabled', 'feesEnabled', 'requiresTranslation']
+```python
+from ingestion_layer.polymarket.polymarket_clob import start_market_websocket_connection
 
-  Full sample market JSON (first BTC market, single-line):
+# Start streaming BTC market data
+start_market_websocket_connection('btc')
+```
 
-  ```text
-  {"id": "1066851", "question": "Bitcoin Up or Down - December 31, 12:00PM-12:15PM ET", "conditionId": "0x2e6af11e4b853b05ba7135239b21d77e808889b6ce1e735de856c94c4e5b5fce", "slug": "btc-updown-15m-1767200400", "resolutionSource": "https://data.chain.link/streams/btc-usd", "endDate": "2025-12-31T17:15:00Z", "liquidity": "20579.7452", "startDate": "2025-12-30T17:10:15.861305Z", "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png", "icon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png", "description": "This market will resolve to \"Up\" if the Bitcoin price at the end of the time range specified in the title is greater than or equal to the price at the beginning of that range. Otherwise, it will resolve to \"Down\".\nThe resolution source for this market is information from Chainlink, specifically the BTC/USD data stream available at https://data.chain.link/streams/btc-usd.\nPlease note that this market is about the price according to Chainlink data stream BTC/USD, not according to other sources or spot markets.", "outcomes": "[\"Up\", \"Down\"]", "outcomePrices": "[\"0.585\", \"0.415\"]", "volume": "92509.470055", "active": true, "closed": false, "marketMakerAddress": "", "createdAt": "2025-12-30T17:01:49.027357Z", "updatedAt": "2025-12-31T17:07:53.929803Z", "new": false, "featured": false, "archived": false, "restricted": true, "groupItemThreshold": "0", "questionID": "0xf69e4e6eb29d29bd1852208e2a27f652e16053fdfdad35ce6953e08f0fb08424", "enableOrderBook": true, "orderPriceMinTickSize": 0.01, "orderMinSize": 5, "volumeNum": 92509.470055, "liquidityNum": 20579.7452, "endDateIso": "2025-12-31", "startDateIso": "2025-12-30", "hasReviewedDates": true, "volume24hr": 815.1150849999999, "volume1wk": 815.1150849999999, "volume1mo": 815.1150849999999, "volume1yr": 815.1150849999999, "clobTokenIds": "[\"8851848546962572193739008211889046036776198486765606333032192644001246174440\", \"10181859819235412241349111952383458602722012323104397550162049365057126390549\"]", "volume24hrClob": 815.1150849999999, "volume1wkClob": 815.1150849999999, "volume1moClob": 815.1150849999999, "volume1yrClob": 815.1150849999999, "volumeClob": 92509.470055, "liquidityClob": 20579.7452, "acceptingOrders": true, "negRisk": false, "ready": false, "funded": false, "acceptingOrdersTimestamp": "2025-12-30T17:09:53Z", "cyom": false, "competitive": 0.9928268261808434, "pagerDutyNotificationEnabled": false, "approved": true, "rewardsMinSize": 0, "rewardsMaxSpread": 0, "spread": 0.01, "lastTradePrice": 0.58, "bestBid": 0.58, "bestAsk": 0.59, "automaticallyActive": true, "clearBookOnStart": false, "showGmpSeries": false, "showGmpOutcome": false, "manualActivation": false, "negRiskOther": false, "umaResolutionStatuses": "[]", "pendingDeployment": false, "deploying": false, "rfqEnabled": false, "eventStartTime": "2025-12-31T17:00:00Z", "holdingRewardsEnabled": false, "feesEnabled": false, "requiresTranslation": false}
-  ```
-  ```
+Or from command line:
+```bash
+python ingestion_layer/polymarket/polymarket_clob.py
+```
 
-- Get parsed CLOB token IDs mapping (decoded JSON from `clobTokenIds`):
+**What it does:**
+1. Determines the current 15-minute timestamp (e.g., 12:00 PM, 12:15 PM, 12:30 PM, etc.)
+2. Fetches the current 15-minute event for your chosen crypto from Polymarket's Gamma API
+3. Extracts the CLOB token IDs needed to subscribe to the WebSocket
+4. Connects to Polymarket's CLOB WebSocket and streams live orderbook updates
+5. **Automatically disconnects and reconnects when the next 15-minute window starts** with new market data
 
-  Command:
-  ```powershell
-  python -c "from ingestion_layer.polymarket.polymarket_gamma import get_club_token_ids_from_15m_events; import json; print(get_club_token_ids_from_15m_events())"
-  ```
+---
 
-  Example output:
-  ```text
-  {"btc": ["8851848546962572193739008211889046036776198486765606333032192644001246174440", "10181859819235412241349111952383458602722012323104397550162049365057126390549"], "eth": ["37283594079074919903126935096138570848920072247779153380455704888017339871157", "16136687713760634223563054086318388951167402190497275532808513193239467005933"], "sol": ["93602383906756530404250452182523938962913165356156639921731486380789417773643", "84927622167566286524912028297335672109479033056884227873841717675364594807856"], "xrp": ["82889833286003340162384985575443597850577731446058256304717407903585705938381", "78879235013957887446233685248607168866886346364832354128806412869023858396787"]}
-  ```
+## How It Works
 
-- Show current quarter timestamp (utility):
+### Architecture Flow
 
-  Command:
-  ```powershell
-  python -c "from ingestion_layer.polymarket.utils.time_utils import current_quarter_timestamp_et; print(current_quarter_timestamp_et())"
-  ```
+```
+User starts connection for 'btc'
+        ↓
+current_quarter_timestamp_et() → Calculate current 15-min timestamp (e.g., 1767200400)
+        ↓
+get_current_15m_events() → Fetch event from Gamma API using slug "btc-updown-15m-1767200400"
+        ↓
+get_club_token_ids_from_15m_events() → Extract CLOB token IDs from event
+        ↓
+WebSocketOrderBook → Connect to CLOB WebSocket with token IDs
+        ↓
+Stream orderbook updates until 15-min window ends
+        ↓
+Auto-disconnect and restart loop with new timestamp
+```
 
-  Example output:
-  ```text
-  1767200400
-  ```
+### Key Components
 
-Notes on data formats
-- The `markets[*]['clobTokenIds']` field returned by the Gamma events API is a JSON-encoded string (i.e. a string containing a JSON array). `get_club_token_ids_from_15m_events()` decodes that string with `json.loads(...)` and returns a Python `list` of token-id strings.
-- The events include both human-friendly fields and CLOB-specific numeric fields with the `Clob` suffix (e.g. `volumeClob`, `liquidityClob`) which are numeric metrics directly related to the CLOB engine.
-- The WebSocket orderbook handler (`WebSocketOrderBook`) prints the raw messages it receives; messages are sent as JSON strings by the websocket server and will contain orderbook updates keyed by typical CLOB fields (prices, sizes, bids/asks) depending on the feed.
+#### 1. **`polymarket_clob.py`** (Main Entry Point)
+- **`start_market_websocket_connection(crypto_name)`**: Main function that runs the continuous streaming loop
+- **`WebSocketOrderBook`**: WebSocket client that:
+  - Subscribes to market updates for specific token IDs
+  - Sends periodic pings to keep connection alive
+  - Monitors the current 15-minute window and auto-reconnects when it changes
+
+#### 2. **`polymarket_gamma.py`** (Market Data Fetching)
+- **`get_current_15m_events()`**: Fetches the current 15-minute event for all supported cryptos
+- **`get_club_token_ids_from_15m_events()`**: Extracts and parses CLOB token IDs from events
+- **`get_polymarket_events()`**: General function to fetch any Polymarket events (used for exploration)
+
+#### 3. **`utils/time_utils.py`** (Timestamp Management)
+- **`current_quarter_timestamp_et()`**: Returns Unix timestamp for the start of the current 15-minute block (aligned to Eastern Time)
+  - Examples: If current time is 12:07 PM ET → returns timestamp for 12:00 PM
+  - If current time is 12:18 PM ET → returns timestamp for 12:15 PM
+
+#### 4. **`configs/polymarket_config.py`** (Configuration)
+- API endpoints, WebSocket URLs, supported crypto slugs, and connection settings
+
+---
+
+## Understanding 15-Minute Events
+
+Polymarket offers "Up or Down" binary options for crypto prices in 15-minute windows:
+- **Question**: "Will Bitcoin be UP or DOWN from 12:00 PM to 12:15 PM ET?"
+- **Outcomes**: ["Up", "Down"]
+- **Resolution**: Based on Chainlink BTC/USD price feed
+
+Each event has:
+- A unique **slug** (e.g., `btc-updown-15m-1767200400`)
+- **CLOB token IDs** that identify the specific orderbook for trading
+- Market metadata (volume, liquidity, current prices, etc.)
+
+---
+
+### 1. Stream Live Orderbook Data (Main Use Case)
+
+```python
+from ingestion_layer.polymarket.polymarket_clob import start_market_websocket_connection
+
+# Stream Ethereum market
+start_market_websocket_connection('eth')
+```
+
+**Output:**
+```
+============================================================
+Fetching current 15-minute event tokens for ETH...
+Found 1 token IDs for ETH
+============================================================
+
+Connected to market with 1 token IDs at timestamp 1767200400
+Next 15-minute window starts in 874 seconds
+{"asset_id": "37283594079074919903126935096138570848920072247779153380455704888017339871157", "event_type": "price_change", "price": "0.52", ...}
+...
+```
+
+### 2. Get Current 15-Minute Timestamp
+
+```python
+from ingestion_layer.polymarket.utils.time_utils import current_quarter_timestamp_et
+
+timestamp = current_quarter_timestamp_et()
+print(timestamp)  # e.g., 1767200400 (represents 12:00 PM ET as Unix timestamp)
+```
+
+### 3. Fetch Current 15-Minute Events for All Cryptos
+
+```python
+from ingestion_layer.polymarket.polymarket_gamma import get_current_15m_events
+
+events = get_current_15m_events()
+print(events.keys())  # dict_keys(['btc', 'eth', 'sol', 'xrp'])
+
+# Access BTC event details
+btc_event = events['btc']
+print(btc_event['title'])      # "Bitcoin Up or Down - December 31, 12:00PM-12:15PM ET"
+print(btc_event['slug'])       # "btc-updown-15m-1767200400"
+print(btc_event['volume'])     # "92509.470055"
+print(btc_event['liquidity'])  # "20579.7452"
+```
+
+### 4. Extract CLOB Token IDs
+
+```python
+from ingestion_layer.polymarket.polymarket_gamma import get_club_token_ids_from_15m_events
+
+token_ids = get_club_token_ids_from_15m_events()
+print(token_ids)
+```
+
+**Output:**
+```python
+{
+  'btc': ['8851848546962572193739008211889046036776198486765606333032192644001246174440', 
+          '10181859819235412241349111952383458602722012323104397550162049365057126390549'],
+  'eth': ['37283594079074919903126935096138570848920072247779153380455704888017339871157', 
+          '16136687713760634223563054086318388951167402190497275532808513193239467005933'],
+  'sol': [...],
+  'xrp': [...]
+}
+```
+
+### 5. Explore Other Polymarket Events (Optional)
+
+```python
+from ingestion_layer.polymarket.polymarket_gamma import get_polymarket_events
+
+# Fetch first 100 active events
+events = get_polymarket_events(limit=100, closed=False, paginate=False)
+for event in events[:5]:
+    print(f"{event['title']} - Volume: {event['volume']}")
+```
+
+---
+
+## API Reference
+
+### Main Functions
+
+#### `start_market_websocket_connection(crypto_name: str)`
+**Location:** `polymarket_clob.py`
+
+Starts a self-reconnecting WebSocket stream for the specified crypto.
+
+- **Parameters:**
+  - `crypto_name` (str): One of `'btc'`, `'eth'`, `'sol'`, `'xrp'`
+- **Behavior:** Runs indefinitely, auto-reconnecting every 15 minutes
+
+---
+
+#### `get_current_15m_events() -> Dict[str, Any]`
+**Location:** `polymarket_gamma.py`
+
+Fetches the current 15-minute "Up or Down" events for all supported cryptos from the Gamma API.
+
+- **Returns:** Dictionary with crypto keys (`'btc'`, `'eth'`, `'sol'`, `'xrp'`) mapping to event objects
+- **Event Object Fields:** `id`, `slug`, `title`, `description`, `volume`, `liquidity`, `markets`, `resolutionSource`, etc.
+
+---
+
+#### `get_club_token_ids_from_15m_events() -> Dict[str, List[str]]`
+**Location:** `polymarket_gamma.py`
+
+Extracts CLOB token IDs from the current 15-minute events.
+
+- **Returns:** Dictionary mapping crypto keys to lists of CLOB token ID strings
+- **Note:** Token IDs are extracted from the `clobTokenIds` field (which is a JSON-encoded string in the API response)
+
+---
+
+#### `current_quarter_timestamp_et() -> int`
+**Location:** `utils/time_utils.py`
+
+Returns the Unix timestamp for the start of the current 15-minute block (in Eastern Time).
+
+- **Returns:** Integer Unix timestamp (UTC)
+- **Example:** If current time is 12:07 PM ET, returns timestamp for 12:00 PM ET
+
+---
+
+#### `get_polymarket_events(...) -> List[Dict[str, Any]]`
+**Location:** `polymarket_gamma.py`
+
+General-purpose function to fetch Polymarket events with pagination support.
+
+- **Parameters:**
+  - `limit` (int): Events per page (default: 50)
+  - `closed` (bool | None): Filter by market status
+  - `max_events` (int | None): Maximum total events to fetch
+  - `paginate` (bool): Whether to fetch all pages (default: True)
+- **Returns:** List of event dictionaries
+
+---
+
+## Technical Notes
+
+### Why CLOB Token IDs?
+Polymarket's CLOB (Central Limit Order Book) requires specific token IDs to subscribe to orderbook updates. Each 15-minute event has two token IDs representing the two outcomes ("Up" and "Down"). The WebSocket subscribes to the "Up" token (first in the list) to monitor market activity.
+
+### Auto-Reconnection Logic
+The `WebSocketOrderBook` class includes a `monitor_timestamp()` thread that:
+1. Calculates when the next 15-minute window starts (current timestamp + 15 minutes)
+2. Sleeps until that time
+3. Closes the WebSocket connection
+4. Triggers `start_market_websocket_connection()` to restart with fresh market data
+
+### Event Slug Format
+Event slugs follow the pattern: `{crypto}-updown-15m-{unix_timestamp}`
+- Example: `btc-updown-15m-1767200400`
+
+### Data Fields
+- **`clobTokenIds`**: JSON-encoded string (needs `json.loads()` to parse)
+- **CLOB-specific fields**: `volumeClob`, `liquidityClob`, `volume24hrClob`, etc. are numeric values specific to the orderbook engine
+
+---
+
+## Configuration
+
+Key settings in [configs/polymarket_config.py](configs/polymarket_config.py):
+- **`GAMMA_API_BASE_URL`**: `https://gamma-api.polymarket.com`
+- **`WEBSOCKET_URL`**: `wss://ws-subscriptions-clob.polymarket.com`
+- **`WEBSOCKET_PING_INTERVAL`**: 5 seconds
+- **`SUPPORTED_CRYPTOS`**: `['btc', 'eth', 'sol', 'xrp']`
+- **`FIFTEEN_MINUTE_EVENTS_SLUG_PREFIXES`**: Slug patterns for each crypto
+
+---
+
+## Sample Event Data
+
+<details>
+<summary>Click to expand: Full BTC 15-minute event JSON</summary>
+
+```json
+{
+  "id": "1066851",
+  "question": "Bitcoin Up or Down - December 31, 12:00PM-12:15PM ET",
+  "slug": "btc-updown-15m-1767200400",
+  "title": "Bitcoin Up or Down",
+  "resolutionSource": "https://data.chain.link/streams/btc-usd",
+  "outcomes": "[\"Up\", \"Down\"]",
+  "outcomePrices": "[\"0.585\", \"0.415\"]",
+  "volume": "92509.470055",
+  "liquidity": "20579.7452",
+  "clobTokenIds": "[\"8851848546962572193739008211889046036776198486765606333032192644001246174440\", \"10181859819235412241349111952383458602722012323104397550162049365057126390549\"]",
+  "active": true,
+  "closed": false,
+  "enableOrderBook": true,
+  "lastTradePrice": 0.58,
+  "bestBid": 0.58,
+  "bestAsk": 0.59,
+  "spread": 0.01
+}
+```
+
+</details>
