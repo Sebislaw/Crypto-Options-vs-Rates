@@ -45,12 +45,18 @@ ssh -i "<PATH\_TO\_PRIVATE\_KEY>" vagrant@localhost -p 2222
 
 ```
 
-## 4. Clone Github Repository
-
-Inside the VM:
+## 4. Inside the VM:
 
 ```bash
 
 git clone https://github.com/Sebislaw/Crypto-Options-vs-Rates.git
+
+cd Crypto-Options-vs-Rates
+
+chmod +x console_scripts/initialize_project.sh
+
+sed -i 's/\r$//' console_scripts/*.sh
+
+console_scripts/initialize_project.sh
 
 ```

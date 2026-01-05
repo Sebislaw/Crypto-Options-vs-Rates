@@ -2,15 +2,16 @@
 # Install with: pip install -r requirements/python_requirements.txt
 
 ## Core / Runtime
-requests==2.32.5  # HTTP client used by Polymarket Gamma API
-pytz==2025.2      # Timezone handling (ET ↔ UTC)
+requests==2.32.3  # HTTP client used by Polymarket Gamma API
+pytz==2024.2      # Timezone handling (ET ↔ UTC)
 py-clob-client==0.28.0  # Polymarket CLOB client
 
 ## Ingestion & Streaming
 python-binance==1.0.19
-websocket-client==1.9.0  # websocket-client (used by some integrations)
+websocket-client==1.8.0  # websocket-client (used by some integrations)
 websockets==12.0         # asyncio websockets (used by ingestion streams)
 loguru==0.7.2            # structured logging for ingestion
+hdfs==2.7.0
 
 ## Data / Analytics
 pandas==2.2.2
@@ -22,4 +23,4 @@ pydantic==2.7.1
 pydantic-settings==2.2.1
 
 ## Development & Testing
-pytest==9.0.1
+pytest>=8.0.0

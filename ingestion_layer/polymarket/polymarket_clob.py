@@ -5,6 +5,7 @@ import threading
 import sys
 from pathlib import Path
 from typing import List
+from hdfs import InsecureClient
 
 parent_dir = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(parent_dir))
@@ -28,6 +29,15 @@ class WebSocketOrderBook:
         self.crypto_name = crypto_name
         self.current_timestamp = current_quarter_timestamp_et()
         self.should_reconnect = True
+        
+        # Connects to HDFS (Standard port: 50070 for Hadoop 3.x, 50070 for Hadoop 2.x)
+        self.hdfs_client = InsecureClient('http://localhost:50070', user='vagrant')
+        self.hdfs_path = "/user/vagrant/raw/polymarket/clob_stream.json"
+        # Buffering to prevent HDFS overload
+        self.buffer = []
+        self.buffer_limit = 50
+        self.last_flush_time = time.time()
+        
         furl = url + "/ws/" + channel_type
         self.ws = WebSocketApp(
             furl,
@@ -37,15 +47,50 @@ class WebSocketOrderBook:
             on_open=self.on_open,
         )
 
+    def flush_to_hdfs(self):
+        """Writes the current buffer to HDFS."""
+        if not self.buffer:
+            return
+
+        try:
+            # Join messages with newlines
+            data_chunk = "\n".join(self.buffer) + "\n"
+            
+            # Try appending to the main file
+            try:
+                with self.hdfs_client.write(self.hdfs_path, append=True, encoding='utf-8') as writer:
+                    writer.write(data_chunk)
+            except Exception:
+                # Fallback: If append is not supported, write a new timestamped file
+                timestamp = int(time.time() * 1000)
+                fallback_path = f"{self.hdfs_path}_{timestamp}.json"
+                with self.hdfs_client.write(fallback_path, encoding='utf-8') as writer:
+                    writer.write(data_chunk)
+            
+            if self.verbose:
+                print(f"[HDFS] Flushed {len(self.buffer)} records.")
+                
+            self.buffer = []
+            self.last_flush_time = time.time()
+            
+        except Exception as e:
+            print(f"[!] HDFS Write Error: {e}")
+
     def on_message(self, ws: WebSocketApp, message: str):
-        print(message)
+        self.buffer.append(message)
+        
+        # Check if we should flush (Batch size reached OR Time elapsed)
+        if len(self.buffer) >= self.buffer_limit or (time.time() - self.last_flush_time > 10):
+            self.flush_to_hdfs()
 
     def on_error(self, ws: WebSocketApp, error: str):
         print("Error: ", error)
+        self.flush_to_hdfs()
         exit(1)
 
     def on_close(self, ws: WebSocketApp, close_status_code: int, close_msg: str):
         print(f"Closing connection (status: {close_status_code}, msg: {close_msg})")
+        self.flush_to_hdfs()
         if not self.should_reconnect:
             exit(0)
 
@@ -82,6 +127,7 @@ class WebSocketOrderBook:
             time.sleep(sleep_duration)
         
         print(f"New 15-minute window reached. Closing current connection to reconnect with new market data...")
+        self.flush_to_hdfs()
         ws.close()
 
     def run(self):
