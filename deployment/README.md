@@ -60,3 +60,23 @@ sed -i 's/\r$//' console_scripts/*.sh
 console_scripts/initialize_project.sh
 
 ```
+
+Load the `ingestion_layer/NiFi_Flow.xml` nito the NiFI in `http://localhost:9443/nifi/`.
+
+Start the NiFi flow.
+
+To start python collectors:
+
+```bash
+
+console_scripts/start_ingestion.sh
+
+```
+
+To stop python collectors:
+
+```bash
+
+console_scripts/stop_ingestion.sh
+
+```

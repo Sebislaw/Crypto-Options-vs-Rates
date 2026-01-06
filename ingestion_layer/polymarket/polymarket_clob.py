@@ -3,6 +3,10 @@ import json
 import time
 import threading
 import sys
+import os
+import subprocess
+import tempfile
+from datetime import datetime
 from pathlib import Path
 from typing import List
 from hdfs import InsecureClient
@@ -10,7 +14,10 @@ from hdfs import InsecureClient
 parent_dir = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(parent_dir))
 
-from ingestion_layer.polymarket.polymarket_gamma import get_club_token_ids_from_15m_events
+from ingestion_layer.polymarket.polymarket_gamma import (
+    get_club_token_ids_from_15m_events, 
+    get_current_15m_events
+)
 from ingestion_layer.polymarket.configs.polymarket_config import (
     MARKET_CHANNEL,
     WEBSOCKET_URL,
@@ -18,6 +25,27 @@ from ingestion_layer.polymarket.configs.polymarket_config import (
 )
 from ingestion_layer.polymarket.utils.time_utils import current_quarter_timestamp_et
 
+
+def save_metadata_to_hdfs(events_data, timestamp):
+    """Saves the full Gamma API response to HDFS."""
+    try:
+        date_str = datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d')
+        # STRICT PATH: /user/vagrant/raw/...
+        hdfs_dir = f"/user/vagrant/raw/polymarket_metadata/date={date_str}"
+        filename = f"events_meta_{timestamp}.json"
+        
+        subprocess.run(["hdfs", "dfs", "-mkdir", "-p", hdfs_dir], stderr=subprocess.DEVNULL)
+
+        with tempfile.NamedTemporaryFile(mode='w', delete=False) as tmp:
+            json.dump(events_data, tmp)
+            tmp_path = tmp.name
+
+        hdfs_dest = f"{hdfs_dir}/{filename}"
+        print(f"   [METADATA] Saving context to: {hdfs_dest}")
+        subprocess.run(["hdfs", "dfs", "-put", "-f", tmp_path, hdfs_dest], stderr=subprocess.DEVNULL)
+        os.remove(tmp_path)
+    except Exception as e:
+        print(f"   [!] Error saving metadata: {e}")
 
 class WebSocketOrderBook:
     def __init__(self, channel_type: str, url: str, data: List[str], message_callback: callable, verbose: bool = False, crypto_name: str = None):
@@ -77,6 +105,10 @@ class WebSocketOrderBook:
             print(f"[!] HDFS Write Error: {e}")
 
     def on_message(self, ws: WebSocketApp, message: str):
+        # "PONG" messages break the NiFi JSON parser. Skip them.
+        if "PONG" in message:
+            return
+        
         self.buffer.append(message)
         
         # Check if we should flush (Batch size reached OR Time elapsed)
@@ -145,6 +177,13 @@ def start_market_websocket_connection(crypto_name: str):
         try:
             print(f"\n{'='*60}")
             print(f"Fetching current 15-minute event tokens for {crypto_name.upper()}...")
+            
+            try:
+                events_meta = get_current_15m_events()
+                save_metadata_to_hdfs(events_meta, current_quarter_timestamp_et())
+            except Exception as e:
+                print(f"[WARN] Could not save metadata: {e}")
+
             club_tokens = get_club_token_ids_from_15m_events()
             
             if crypto_name not in club_tokens:
