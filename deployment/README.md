@@ -61,7 +61,7 @@ console_scripts/initialize_project.sh
 
 ```
 
-Load the `ingestion_layer/NiFi_Flow.xml` nito the NiFI in `http://localhost:9443/nifi/`.
+Load the `ingestion_layer/NiFi_Flow.xml` templated in the NiFi UI at `http://localhost:9443/nifi/`. Enable controller services and start all processors.
 
 Start the NiFi flow.
 
@@ -80,3 +80,11 @@ To stop python collectors:
 console_scripts/stop_ingestion.sh
 
 ```
+
+## 5. Data flow.
+
+### Ingestion:
+
+The python collectors save the output to hdfs in raw/ directory.
+
+NiFi fetches from raw/ directory and coverts all inputs to unifies parquet format, then saves in hdfs in cleansed/ directory. NiFi also streams data in `json` format to the currently mocked Kafka. You can see the logs in  `/usr/local/nifi-1.14.0/logs/nifi-app.log` (they have `"SENT TO KAFKA"` header).
