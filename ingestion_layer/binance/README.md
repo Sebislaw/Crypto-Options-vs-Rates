@@ -20,7 +20,7 @@ This module provides automated ingestion, storage, and verification of Binance s
 ### 1. Install Requirements
 
 ```bash
-pip install -r binance-api/requirements.txt
+pip install -r requirements/python_requirements.txt
 ```
 
 ### 2. Configure (Optional)
