@@ -1,23 +1,25 @@
-# ============================================
-# Production Dependencies
-# ============================================
+# Consolidated Python requirements for Crypto-Options-vs-Rates
+# Install with: pip install -r requirements/python_requirements.txt
 
-# HTTP requests for Polymarket Gamma API
-requests==2.32.5
+## Core / Runtime
+requests==2.32.5  # HTTP client used by Polymarket Gamma API
+pytz==2025.2      # Timezone handling (ET ↔ UTC)
+py-clob-client==0.28.0  # Polymarket CLOB client
 
-# Timezone handling for ET to UTC conversions
-pytz==2025.2
+## Ingestion & Streaming
+python-binance==1.0.19
+websocket-client==1.9.0  # websocket-client (used by some integrations)
+websockets==12.0         # asyncio websockets (used by ingestion streams)
+loguru==0.7.2            # structured logging for ingestion
 
-# WebSocket support for real-time market data
-websocket-client==1.9.0
+## Data / Analytics
+pandas==2.2.2
+pyarrow==15.0.2
+duckdb==0.10.2
 
-# Polymarket CLOB (Central Limit Order Book) API client
-py-clob-client==0.28.0
+## Settings & Validation
+pydantic==2.7.1
+pydantic-settings==2.2.1
 
-
-# ============================================
-# Development & Testing Dependencies
-# ============================================
-
-# Unit testing framework
+## Development & Testing
 pytest==9.0.1

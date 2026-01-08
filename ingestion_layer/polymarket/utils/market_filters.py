@@ -5,7 +5,7 @@ from pathlib import Path
 parent_dir = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(parent_dir))
 
-from configs.polymarket_config import CRYPTO_KEYWORDS
+from ingestion_layer.polymarket.configs.polymarket_config import CRYPTO_KEYWORDS
 
 
 def is_crypto_market(market: Dict[str, Any]) -> bool:

@@ -9,13 +9,13 @@ from typing import List
 parent_dir = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(parent_dir))
 
-from data_ingestion.collectors.polymarket_gamma import get_club_token_ids_from_15m_events
-from configs.polymarket_config import (
+from ingestion_layer.polymarket.polymarket_gamma import get_club_token_ids_from_15m_events
+from ingestion_layer.polymarket.configs.polymarket_config import (
     MARKET_CHANNEL,
     WEBSOCKET_URL,
     WEBSOCKET_PING_INTERVAL
 )
-from data_ingestion.utils.time_utils import current_quarter_timestamp_et
+from ingestion_layer.polymarket.utils.time_utils import current_quarter_timestamp_et
 
 
 class WebSocketOrderBook:

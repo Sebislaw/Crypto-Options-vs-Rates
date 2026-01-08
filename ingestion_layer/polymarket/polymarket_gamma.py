@@ -7,13 +7,13 @@ import json
 parent_dir = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(parent_dir))
 
-from configs.polymarket_config import (
+from ingestion_layer.polymarket.configs.polymarket_config import (
     DEFAULT_LIMIT,
     GAMMA_API_BASE_URL,
     FIFTEEN_MINUTE_EVENTS_SLUG_PREFIXES,
     SUPPORTED_CRYPTOS
 )
-from data_ingestion.utils.time_utils import current_quarter_timestamp_et
+from ingestion_layer.polymarket.utils.time_utils import current_quarter_timestamp_et
 
 
 def get_polymarket_events(

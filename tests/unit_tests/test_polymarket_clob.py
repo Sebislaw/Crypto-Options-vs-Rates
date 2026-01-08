@@ -12,7 +12,7 @@ from pathlib import Path
 parent_dir = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(parent_dir))
 
-from data_ingestion.collectors.polymarket_clob import (
+from ingestion_layer.polymarket.polymarket_clob import (
     WebSocketOrderBook,
     start_market_websocket_connection
 )
@@ -28,8 +28,8 @@ class TestWebSocketOrderBook(unittest.TestCase):
         self.data = ["token-1", "token-2"]
         self.message_callback = Mock()
 
-    @patch('data_ingestion.collectors.polymarket_clob.WebSocketApp')
-    @patch('data_ingestion.collectors.polymarket_clob.current_quarter_timestamp_et')
+    @patch('ingestion_layer.polymarket.polymarket_clob.WebSocketApp')
+    @patch('ingestion_layer.polymarket.polymarket_clob.current_quarter_timestamp_et')
     def test_init_creates_websocket(self, mock_timestamp, mock_ws_app):
         """Test that WebSocketOrderBook initializes correctly."""
         mock_timestamp.return_value = 1234567890
@@ -59,8 +59,8 @@ class TestWebSocketOrderBook(unittest.TestCase):
         call_args = mock_ws_app.call_args
         self.assertEqual(call_args[0][0], expected_url)
 
-    @patch('data_ingestion.collectors.polymarket_clob.WebSocketApp')
-    @patch('data_ingestion.collectors.polymarket_clob.current_quarter_timestamp_et')
+    @patch('ingestion_layer.polymarket.polymarket_clob.WebSocketApp')
+    @patch('ingestion_layer.polymarket.polymarket_clob.current_quarter_timestamp_et')
     def test_init_without_optional_params(self, mock_timestamp, mock_ws_app):
         """Test initialization without optional parameters."""
         mock_timestamp.return_value = 1234567890
@@ -75,8 +75,8 @@ class TestWebSocketOrderBook(unittest.TestCase):
         self.assertFalse(ws_orderbook.verbose)
         self.assertIsNone(ws_orderbook.crypto_name)
 
-    @patch('data_ingestion.collectors.polymarket_clob.WebSocketApp')
-    @patch('data_ingestion.collectors.polymarket_clob.current_quarter_timestamp_et')
+    @patch('ingestion_layer.polymarket.polymarket_clob.WebSocketApp')
+    @patch('ingestion_layer.polymarket.polymarket_clob.current_quarter_timestamp_et')
     @patch('builtins.print')
     def test_on_message(self, mock_print, mock_timestamp, mock_ws_app):
         """Test on_message callback."""
@@ -97,8 +97,8 @@ class TestWebSocketOrderBook(unittest.TestCase):
         # Verify message was printed
         mock_print.assert_called_once_with(test_message)
 
-    @patch('data_ingestion.collectors.polymarket_clob.WebSocketApp')
-    @patch('data_ingestion.collectors.polymarket_clob.current_quarter_timestamp_et')
+    @patch('ingestion_layer.polymarket.polymarket_clob.WebSocketApp')
+    @patch('ingestion_layer.polymarket.polymarket_clob.current_quarter_timestamp_et')
     @patch('builtins.print')
     def test_on_error(self, mock_print, mock_timestamp, mock_ws_app):
         """Test on_error callback."""
@@ -120,8 +120,8 @@ class TestWebSocketOrderBook(unittest.TestCase):
         self.assertEqual(cm.exception.code, 1)
         mock_print.assert_called_once_with("Error: ", test_error)
 
-    @patch('data_ingestion.collectors.polymarket_clob.WebSocketApp')
-    @patch('data_ingestion.collectors.polymarket_clob.current_quarter_timestamp_et')
+    @patch('ingestion_layer.polymarket.polymarket_clob.WebSocketApp')
+    @patch('ingestion_layer.polymarket.polymarket_clob.current_quarter_timestamp_et')
     @patch('builtins.print')
     def test_on_close_with_reconnect(self, mock_print, mock_timestamp, mock_ws_app):
         """Test on_close callback when reconnection is allowed."""
@@ -142,8 +142,8 @@ class TestWebSocketOrderBook(unittest.TestCase):
         
         mock_print.assert_called_once_with("Closing connection (status: 1000, msg: Normal closure)")
 
-    @patch('data_ingestion.collectors.polymarket_clob.WebSocketApp')
-    @patch('data_ingestion.collectors.polymarket_clob.current_quarter_timestamp_et')
+    @patch('ingestion_layer.polymarket.polymarket_clob.WebSocketApp')
+    @patch('ingestion_layer.polymarket.polymarket_clob.current_quarter_timestamp_et')
     @patch('builtins.print')
     def test_on_close_without_reconnect(self, mock_print, mock_timestamp, mock_ws_app):
         """Test on_close callback when reconnection is not allowed."""
@@ -164,9 +164,9 @@ class TestWebSocketOrderBook(unittest.TestCase):
         
         self.assertEqual(cm.exception.code, 0)
 
-    @patch('data_ingestion.collectors.polymarket_clob.WebSocketApp')
-    @patch('data_ingestion.collectors.polymarket_clob.current_quarter_timestamp_et')
-    @patch('data_ingestion.collectors.polymarket_clob.threading.Thread')
+    @patch('ingestion_layer.polymarket.polymarket_clob.WebSocketApp')
+    @patch('ingestion_layer.polymarket.polymarket_clob.current_quarter_timestamp_et')
+    @patch('ingestion_layer.polymarket.polymarket_clob.threading.Thread')
     @patch('builtins.print')
     def test_on_open_market_channel(self, mock_print, mock_thread, mock_timestamp, mock_ws_app):
         """Test on_open callback for market channel."""
@@ -192,8 +192,8 @@ class TestWebSocketOrderBook(unittest.TestCase):
         # Verify threads were started
         self.assertEqual(mock_thread.call_count, 2)  # ping and monitor threads
 
-    @patch('data_ingestion.collectors.polymarket_clob.WebSocketApp')
-    @patch('data_ingestion.collectors.polymarket_clob.current_quarter_timestamp_et')
+    @patch('ingestion_layer.polymarket.polymarket_clob.WebSocketApp')
+    @patch('ingestion_layer.polymarket.polymarket_clob.current_quarter_timestamp_et')
     def test_on_open_invalid_channel(self, mock_timestamp, mock_ws_app):
         """Test on_open callback with invalid channel type."""
         mock_timestamp.return_value = 1234567890
@@ -212,9 +212,9 @@ class TestWebSocketOrderBook(unittest.TestCase):
         
         self.assertEqual(cm.exception.code, 1)
 
-    @patch('data_ingestion.collectors.polymarket_clob.WebSocketApp')
-    @patch('data_ingestion.collectors.polymarket_clob.current_quarter_timestamp_et')
-    @patch('data_ingestion.collectors.polymarket_clob.time.sleep')
+    @patch('ingestion_layer.polymarket.polymarket_clob.WebSocketApp')
+    @patch('ingestion_layer.polymarket.polymarket_clob.current_quarter_timestamp_et')
+    @patch('ingestion_layer.polymarket.polymarket_clob.time.sleep')
     def test_ping(self, mock_sleep, mock_timestamp, mock_ws_app):
         """Test ping method sends periodic ping messages."""
         mock_timestamp.return_value = 1234567890
@@ -245,10 +245,10 @@ class TestWebSocketOrderBook(unittest.TestCase):
         for call_args in mock_ws.send.call_args_list:
             self.assertEqual(call_args[0][0], "PING")
 
-    @patch('data_ingestion.collectors.polymarket_clob.WebSocketApp')
-    @patch('data_ingestion.collectors.polymarket_clob.current_quarter_timestamp_et')
-    @patch('data_ingestion.collectors.polymarket_clob.time.sleep')
-    @patch('data_ingestion.collectors.polymarket_clob.time.time')
+    @patch('ingestion_layer.polymarket.polymarket_clob.WebSocketApp')
+    @patch('ingestion_layer.polymarket.polymarket_clob.current_quarter_timestamp_et')
+    @patch('ingestion_layer.polymarket.polymarket_clob.time.sleep')
+    @patch('ingestion_layer.polymarket.polymarket_clob.time.time')
     @patch('builtins.print')
     def test_monitor_timestamp(self, mock_print, mock_time, mock_sleep, mock_timestamp, mock_ws_app):
         """Test monitor_timestamp closes connection at next 15-minute window."""
@@ -276,10 +276,10 @@ class TestWebSocketOrderBook(unittest.TestCase):
         # Verify print messages
         self.assertEqual(mock_print.call_count, 2)
 
-    @patch('data_ingestion.collectors.polymarket_clob.WebSocketApp')
-    @patch('data_ingestion.collectors.polymarket_clob.current_quarter_timestamp_et')
-    @patch('data_ingestion.collectors.polymarket_clob.time.sleep')
-    @patch('data_ingestion.collectors.polymarket_clob.time.time')
+    @patch('ingestion_layer.polymarket.polymarket_clob.WebSocketApp')
+    @patch('ingestion_layer.polymarket.polymarket_clob.current_quarter_timestamp_et')
+    @patch('ingestion_layer.polymarket.polymarket_clob.time.sleep')
+    @patch('ingestion_layer.polymarket.polymarket_clob.time.time')
     def test_monitor_timestamp_negative_sleep(self, mock_time, mock_sleep, mock_timestamp, mock_ws_app):
         """Test monitor_timestamp when already past next window."""
         current_ts = 1234567890
@@ -304,8 +304,8 @@ class TestWebSocketOrderBook(unittest.TestCase):
         # Verify close was still called
         mock_ws.close.assert_called_once()
 
-    @patch('data_ingestion.collectors.polymarket_clob.WebSocketApp')
-    @patch('data_ingestion.collectors.polymarket_clob.current_quarter_timestamp_et')
+    @patch('ingestion_layer.polymarket.polymarket_clob.WebSocketApp')
+    @patch('ingestion_layer.polymarket.polymarket_clob.current_quarter_timestamp_et')
     def test_run(self, mock_timestamp, mock_ws_app):
         """Test run method calls ws.run_forever."""
         mock_timestamp.return_value = 1234567890
@@ -326,8 +326,8 @@ class TestWebSocketOrderBook(unittest.TestCase):
 class TestStartMarketWebSocketConnection(unittest.TestCase):
     """Test suite for start_market_websocket_connection function."""
 
-    @patch('data_ingestion.collectors.polymarket_clob.WebSocketOrderBook')
-    @patch('data_ingestion.collectors.polymarket_clob.get_club_token_ids_from_15m_events')
+    @patch('ingestion_layer.polymarket.polymarket_clob.WebSocketOrderBook')
+    @patch('ingestion_layer.polymarket.polymarket_clob.get_club_token_ids_from_15m_events')
     @patch('builtins.print')
     def test_successful_connection(self, mock_print, mock_get_tokens, mock_ws_class):
         """Test successful WebSocket connection setup."""
@@ -361,9 +361,9 @@ class TestStartMarketWebSocketConnection(unittest.TestCase):
         # Verify run was called
         mock_ws_instance.run.assert_called_once()
 
-    @patch('data_ingestion.collectors.polymarket_clob.WebSocketOrderBook')
-    @patch('data_ingestion.collectors.polymarket_clob.get_club_token_ids_from_15m_events')
-    @patch('data_ingestion.collectors.polymarket_clob.time.sleep')
+    @patch('ingestion_layer.polymarket.polymarket_clob.WebSocketOrderBook')
+    @patch('ingestion_layer.polymarket.polymarket_clob.get_club_token_ids_from_15m_events')
+    @patch('ingestion_layer.polymarket.polymarket_clob.time.sleep')
     @patch('builtins.print')
     def test_crypto_not_found(self, mock_print, mock_sleep, mock_get_tokens, mock_ws_class):
         """Test handling when crypto name is not found in tokens."""
@@ -387,9 +387,9 @@ class TestStartMarketWebSocketConnection(unittest.TestCase):
         # Verify WebSocket was never created
         mock_ws_class.assert_not_called()
 
-    @patch('data_ingestion.collectors.polymarket_clob.WebSocketOrderBook')
-    @patch('data_ingestion.collectors.polymarket_clob.get_club_token_ids_from_15m_events')
-    @patch('data_ingestion.collectors.polymarket_clob.time.sleep')
+    @patch('ingestion_layer.polymarket.polymarket_clob.WebSocketOrderBook')
+    @patch('ingestion_layer.polymarket.polymarket_clob.get_club_token_ids_from_15m_events')
+    @patch('ingestion_layer.polymarket.polymarket_clob.time.sleep')
     @patch('builtins.print')
     def test_exception_handling(self, mock_print, mock_sleep, mock_get_tokens, mock_ws_class):
         """Test exception handling and retry mechanism."""
@@ -408,8 +408,8 @@ class TestStartMarketWebSocketConnection(unittest.TestCase):
         # Verify sleep was called with 10 seconds
         mock_sleep.assert_called_once_with(10)
 
-    @patch('data_ingestion.collectors.polymarket_clob.WebSocketOrderBook')
-    @patch('data_ingestion.collectors.polymarket_clob.get_club_token_ids_from_15m_events')
+    @patch('ingestion_layer.polymarket.polymarket_clob.WebSocketOrderBook')
+    @patch('ingestion_layer.polymarket.polymarket_clob.get_club_token_ids_from_15m_events')
     @patch('builtins.print')
     def test_keyboard_interrupt(self, mock_print, mock_get_tokens, mock_ws_class):
         """Test graceful shutdown on KeyboardInterrupt."""
@@ -420,8 +420,8 @@ class TestStartMarketWebSocketConnection(unittest.TestCase):
         # Verify shutdown message
         mock_print.assert_any_call("\nShutting down...")
 
-    @patch('data_ingestion.collectors.polymarket_clob.WebSocketOrderBook')
-    @patch('data_ingestion.collectors.polymarket_clob.get_club_token_ids_from_15m_events')
+    @patch('ingestion_layer.polymarket.polymarket_clob.WebSocketOrderBook')
+    @patch('ingestion_layer.polymarket.polymarket_clob.get_club_token_ids_from_15m_events')
     @patch('builtins.print')
     def test_multiple_reconnections(self, mock_print, mock_get_tokens, mock_ws_class):
         """Test that the function reconnects after connection closes."""
@@ -444,8 +444,8 @@ class TestStartMarketWebSocketConnection(unittest.TestCase):
         # Verify tokens were fetched twice
         self.assertEqual(mock_get_tokens.call_count, 2)
 
-    @patch('data_ingestion.collectors.polymarket_clob.WebSocketOrderBook')
-    @patch('data_ingestion.collectors.polymarket_clob.get_club_token_ids_from_15m_events')
+    @patch('ingestion_layer.polymarket.polymarket_clob.WebSocketOrderBook')
+    @patch('ingestion_layer.polymarket.polymarket_clob.get_club_token_ids_from_15m_events')
     @patch('builtins.print')
     def test_uses_first_token_only(self, mock_print, mock_get_tokens, mock_ws_class):
         """Test that only the first token is used from the list."""
@@ -464,8 +464,8 @@ class TestStartMarketWebSocketConnection(unittest.TestCase):
         self.assertEqual(call_args[0][2], ['eth-token-1'])
         self.assertEqual(len(call_args[0][2]), 1)
 
-    @patch('data_ingestion.collectors.polymarket_clob.WebSocketOrderBook')
-    @patch('data_ingestion.collectors.polymarket_clob.get_club_token_ids_from_15m_events')
+    @patch('ingestion_layer.polymarket.polymarket_clob.WebSocketOrderBook')
+    @patch('ingestion_layer.polymarket.polymarket_clob.get_club_token_ids_from_15m_events')
     @patch('builtins.print')
     def test_different_crypto_names(self, mock_print, mock_get_tokens, mock_ws_class):
         """Test connection with different cryptocurrency names."""

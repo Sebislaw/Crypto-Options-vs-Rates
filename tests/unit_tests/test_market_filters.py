@@ -10,7 +10,7 @@ from pathlib import Path
 parent_dir = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(parent_dir))
 
-from data_ingestion.utils.market_filters import is_crypto_market
+from ingestion_layer.polymarket.utils.market_filters import is_crypto_market
 
 
 class TestIsCryptoMarket(unittest.TestCase):
