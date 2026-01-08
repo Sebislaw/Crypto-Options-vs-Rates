@@ -61,11 +61,7 @@ console_scripts/initialize_project.sh
 
 ```
 
-Load the `ingestion_layer/NiFi_Flow.xml` templated in the NiFi UI at `http://localhost:9443/nifi/`. Enable controller services and start all processors.
-
-Start the NiFi flow.
-
-To start python collectors:
+To start ingestion phase:
 
 ```bash
 
@@ -73,7 +69,7 @@ console_scripts/start_ingestion.sh
 
 ```
 
-To stop python collectors:
+To stop ingestion phase:
 
 ```bash
 

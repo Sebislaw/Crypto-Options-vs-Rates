@@ -13,13 +13,20 @@ logger.add("app.log", rotation="10 MB")
 async def main():
     logger.info("Starting Binance Data Ingestor...")
     
+    # Including historical stream may be problematic,
+    # as it would duplicate data already stored in the warehouse
+    # when executed alongside the real-time stream the next day.
+    # We would need to implement checks to avoid duplicates.
+    # Hence, it is commented out for now.
+    # --- COMMENTED OUT SECTION START ---
     # 1. Backfill Historical Data
-    logger.info("Starting historical backfill...")
-    for symbol in settings.SYMBOLS:
-        await historical_fetcher.fetch_historical_data(symbol, start_str="1 day ago UTC")
+    # logger.info("Starting historical backfill...")
+    # for symbol in settings.SYMBOLS:
+    #     await historical_fetcher.fetch_historical_data(symbol, start_str="1 day ago UTC")
     
-    await historical_fetcher.close()
-    logger.info("Historical backfill complete.")
+    # await historical_fetcher.close()
+    # logger.info("Historical backfill complete.")
+    # --- COMMENTED OUT SECTION END ---
     
     # 2. Start Real-time Stream
     logger.info("Starting real-time stream...")

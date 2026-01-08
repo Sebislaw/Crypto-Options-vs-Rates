@@ -32,15 +32,7 @@ else
     echo "   [!] WARNING: HDFS seems unreachable. Collectors may fail to write data."
 fi
 
-# 3. Create HDFS Directories
-echo "[HDFS] Ensuring data directories..."
-if command -v hdfs &> /dev/null; then
-    hdfs dfs -mkdir -p /user/vagrant/raw/binance 2>/dev/null
-    hdfs dfs -mkdir -p /user/vagrant/raw/polymarket 2>/dev/null
-    hdfs dfs -chmod -R 775 /user/vagrant/raw/ 2>/dev/null
-fi
-
-# 4. Start Binance Collector
+# 3. Start Binance Collector
 echo "[INGEST] Starting Binance Collector..."
 cd "$PROJECT_ROOT" || exit
 export PYTHONPATH=$PROJECT_ROOT
@@ -48,7 +40,7 @@ nohup "$ENV_PYTHON" ingestion_layer/binance/main.py >> "$LOG_DIR/binance_app.log
 echo $! > "$PID_DIR/binance.pid"
 echo "   -> Binance Collector running (PID: $(cat $PID_DIR/binance.pid))"
 
-# 5. Start Polymarket WebSocket Collector
+# 4. Start Polymarket WebSocket Collector
 echo "[INGEST] Starting Polymarket WebSocket..."
 nohup "$ENV_PYTHON" -u ingestion_layer/polymarket/polymarket_clob.py >> "$LOG_DIR/polymarket_app.log" 2> "$LOG_DIR/polymarket_error.log" &
 echo $! > "$PID_DIR/polymarket_clob.pid"

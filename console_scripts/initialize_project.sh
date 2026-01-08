@@ -47,7 +47,38 @@ else
     echo "   [!] WARNING: Bootstrap script not found at $BOOTSTRAP_SCRIPT"
 fi
 
+# 5. Check HDFS Status (Using direct admin report for accuracy)
+echo "[CHECK] Verifying Infrastructure status..."
+if hdfs dfsadmin -report > /dev/null 2>&1; then
+    echo "   -> HDFS is running and reachable."
+else
+    echo "   [!] WARNING: HDFS seems unreachable. Collectors may fail to write data."
+fi
+
+# 6. Create HDFS Directories
+echo "[HDFS] Ensuring data directories..."
+if command -v hdfs &> /dev/null; then
+    hdfs dfs -mkdir -p /user/vagrant/raw/binance 2>/dev/null
+    hdfs dfs -mkdir -p /user/vagrant/raw/polymarket_metadata 2>/dev/null
+    hdfs dfs -mkdir -p /user/vagrant/raw/polymarket_trade 2>/dev/null
+    hdfs dfs -chmod -R 775 /user/vagrant/raw/ 2>/dev/null
+fi
+
+# 7. Deploy NiFi Flow (NEW SECTION)
+echo "=================================================="
+echo "   Deploying NiFi Configuration"
+echo "=================================================="
+DEPLOY_NIFI_SCRIPT="$PROJECT_ROOT/console_scripts/deploy_nifi.sh"
+
+if [ -f "$DEPLOY_NIFI_SCRIPT" ]; then
+    echo "   -> Executing NiFi Auto-Deploy..."
+    # Running as bash (not sudo) so it uses the 'vagrant' user for API calls
+    bash "$DEPLOY_NIFI_SCRIPT"
+else
+    echo "   [!] WARNING: NiFi deployment script not found at $DEPLOY_NIFI_SCRIPT"
+    echo "       You may need to deploy the template manually."
+fi
+
 echo "=================================================="
 echo "   Initialization Complete!"
-echo "   Run 'console_scripts/start_ingestion.sh' to start collectors."
 echo "=================================================="

@@ -60,7 +60,7 @@ class WebSocketOrderBook:
         
         # Connects to HDFS (Standard port: 50070 for Hadoop 3.x, 50070 for Hadoop 2.x)
         self.hdfs_client = InsecureClient('http://localhost:50070', user='vagrant')
-        self.hdfs_path = "/user/vagrant/raw/polymarket/clob_stream.json"
+        self.hdfs_path = "/user/vagrant/raw/polymarket_trade/clob_stream.json"
         # Buffering to prevent HDFS overload
         self.buffer = []
         self.buffer_limit = 50
