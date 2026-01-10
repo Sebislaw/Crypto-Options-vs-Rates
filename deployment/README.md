@@ -47,6 +47,18 @@ ssh -i "<PATH\_TO\_PRIVATE\_KEY>" vagrant@localhost -p 2222
 
 ## 4. Inside the VM:
 
+### When shutting down
+
+When shutting down, do not force shutdown (power button icon in VirtualBox). Turn off, by sending shutdown sygnal to the VM (bolt icon in VirtualBox).
+
+### When resuming the VM
+
+Do not run the `initialize_project.sh` script again.
+
+Start services: `sudo /home/vagrant/scripts/bootstrap.sh`.
+
+### When setting up a new VM
+
 ```bash
 
 git clone https://github.com/Sebislaw/Crypto-Options-vs-Rates.git
@@ -60,6 +72,8 @@ sed -i 's/\r$//' console_scripts/*.sh
 console_scripts/initialize_project.sh
 
 ```
+
+### Running the system
 
 To start ingestion phase:
 
