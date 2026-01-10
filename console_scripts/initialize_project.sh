@@ -15,9 +15,9 @@ echo "=================================================="
 
 # 1. Clean up project folders and fix executable permissions
 mkdir -p "$LOG_DIR" "$PID_DIR"
-if [ -d "$PROJECT_ROOT/console_scripts" ]; then
-    find "$PROJECT_ROOT/console_scripts" -name "*.sh" -type f -exec sed -i 's/\r$//' {} +
-    find "$PROJECT_ROOT/console_scripts" -name "*.sh" -type f -exec chmod +x {} +
+if [ -d "$PROJECT_ROOT" ]; then
+    find "$PROJECT_ROOT" -name "*.sh" -type f -exec sed -i 's/\r$//' {} +
+    find "$PROJECT_ROOT" -name "*.sh" -type f -exec chmod +x {} +
 fi
 
 # 2. Install System Utilities & Compilers
@@ -64,11 +64,25 @@ if command -v hdfs &> /dev/null; then
     hdfs dfs -chmod -R 775 /user/vagrant/raw/ 2>/dev/null
 fi
 
-# 7. Deploy NiFi Flow (NEW SECTION)
+# 7. Setup Kafka (speed layer)
+echo "=================================================="
+echo "   Setting up Kafka (speed_layer)"
+echo "=================================================="
+KAFKA_SETUP_SCRIPT="$PROJECT_ROOT/speed_layer/kafka/setup_kafka.sh"
+
+if [ -f "$KAFKA_SETUP_SCRIPT" ]; then
+    echo "   -> Executing Kafka setup script..."
+    bash "$KAFKA_SETUP_SCRIPT"
+else
+    echo "   [!] WARNING: Kafka setup script not found at $KAFKA_SETUP_SCRIPT"
+    echo "       Kafka may not be initialized."
+fi
+
+# 8. Deploy NiFi Flow (NEW SECTION)
 echo "=================================================="
 echo "   Deploying NiFi Configuration"
 echo "=================================================="
-DEPLOY_NIFI_SCRIPT="$PROJECT_ROOT/console_scripts/deploy_nifi.sh"
+DEPLOY_NIFI_SCRIPT="$PROJECT_ROOT/ingestion_layer/nifi/setup_nifi.sh"
 
 if [ -f "$DEPLOY_NIFI_SCRIPT" ]; then
     echo "   -> Executing NiFi Auto-Deploy..."
@@ -78,6 +92,8 @@ else
     echo "   [!] WARNING: NiFi deployment script not found at $DEPLOY_NIFI_SCRIPT"
     echo "       You may need to deploy the template manually."
 fi
+
+
 
 echo "=================================================="
 echo "   Initialization Complete!"

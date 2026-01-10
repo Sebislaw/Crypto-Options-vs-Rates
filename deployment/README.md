@@ -97,4 +97,18 @@ console_scripts/stop_ingestion.sh
 
 The python collectors save the output to hdfs in raw/ directory.
 
-NiFi fetches from raw/ directory and coverts all inputs to unifies parquet format, then saves in hdfs in cleansed/ directory. NiFi also streams data in `json` format to the currently mocked Kafka. You can see the logs in  `/usr/local/nifi-1.14.0/logs/nifi-app.log` (they have `"SENT TO KAFKA"` header).
+NiFi fetches from raw/ directory and coverts all inputs to unifies parquet format, then saves in hdfs in cleansed/ directory. NiFi also streams data to three Kafka topics: `binance`, `polymarket_trade` and `polymarket_metadata`.
+
+To view each Kafka topic stream data:
+
+```bash
+/usr/local/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic binance --from-beginning
+
+/usr/local/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic polymarket_trade --from-beginning
+
+/usr/local/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic polymarket_metadata --from-beginning
+```
+
+### Speed:
+
+The first part of the speed layer is Kafka, which partly is implemented in the ingestion layer in `NiFI_Flow.xml`. Kafka serves as an ingestion phase component dedicated for the speed layer.
