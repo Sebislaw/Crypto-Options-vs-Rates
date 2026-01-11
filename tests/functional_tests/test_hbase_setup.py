@@ -115,7 +115,7 @@ class TestMarketAnalyticsSchema(unittest.TestCase):
     
     @skip_if_no_hbase
     def test_has_prices_column_family(self):
-        """HB-002a: market_analytics should have 'prices' column family."""
+        """HB-002a: market_analytics should have 'price_data' column family."""
         family_names = [k.decode() for k in self.families.keys()]
         self.assertIn(
             CF_PRICES,
@@ -125,7 +125,7 @@ class TestMarketAnalyticsSchema(unittest.TestCase):
     
     @skip_if_no_hbase
     def test_has_betting_column_family(self):
-        """HB-002b: market_analytics should have 'betting' column family."""
+        """HB-002b: market_analytics should have 'bet_data' column family."""
         family_names = [k.decode() for k in self.families.keys()]
         self.assertIn(
             CF_BETTING,
@@ -135,7 +135,7 @@ class TestMarketAnalyticsSchema(unittest.TestCase):
     
     @skip_if_no_hbase
     def test_has_correlation_column_family(self):
-        """HB-002c: market_analytics should have 'correlation' column family."""
+        """HB-002c: market_analytics should have 'analysis' column family."""
         family_names = [k.decode() for k in self.families.keys()]
         self.assertIn(
             CF_CORRELATION,

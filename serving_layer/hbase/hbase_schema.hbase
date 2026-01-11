@@ -1,6 +1,8 @@
 # HBase Schema Definition for Crypto Options vs Rates Project
 # This file contains HBase shell commands to create the serving layer tables
 # Execute with: hbase shell < hbase_schema.hbase
+#
+# SCHEMA ALIGNED WITH: batch_layer/spark/config.py
 
 # ==============================================================================
 # Table: market_analytics (Batch Layer Output)
@@ -13,17 +15,18 @@
 # drop_if_exists 'market_analytics'
 
 create_if_not_exists 'market_analytics', \
-  {NAME => 'prices', VERSIONS => 1, COMPRESSION => 'SNAPPY', TTL => 31536000}, \
-  {NAME => 'betting', VERSIONS => 1, COMPRESSION => 'SNAPPY', TTL => 31536000}, \
-  {NAME => 'correlation', VERSIONS => 1, COMPRESSION => 'SNAPPY', TTL => 31536000}
+  {NAME => 'price_data', VERSIONS => 1, COMPRESSION => 'GZ', TTL => 31536000}, \
+  {NAME => 'bet_data', VERSIONS => 1, COMPRESSION => 'GZ', TTL => 31536000}, \
+  {NAME => 'analysis', VERSIONS => 1, COMPRESSION => 'GZ', TTL => 31536000}
 
-# Column Family Details:
-# prices:      Binance OHLCV data aggregated to 15-min windows
-#   - open, close, high, low, volume, volatility
-# betting:     Polymarket betting data aggregated to 15-min windows  
-#   - avg_prob_up, avg_prob_down, total_bet_vol, sentiment_score
-# correlation: Computed analytics comparing predictions vs reality
-#   - prediction_result (CORRECT/WRONG), divergence
+# Column Family Details (aligned with batch_layer/spark/batch_analytics.py):
+# price_data:  Binance OHLC data
+#   - open, close, high, low, volume
+# bet_data:    Polymarket probability metrics
+#   - avg_prob, max_prob, activity
+# analysis:    Computed correlation results
+#   - result (CORRECT/WRONG), price_movement, actual_direction, predicted_direction
+#   - timestamp, symbol, crypto
 
 # ==============================================================================
 # Table: market_live (Speed Layer Output)

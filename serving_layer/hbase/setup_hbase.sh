@@ -70,10 +70,10 @@ echo "Creating HBase Tables..."
 echo "--------------------------------------------------"
 
 # Market Analytics Table (Batch Layer)
-# Column Families: prices, betting, correlation
-# Each with SNAPPY compression and 1-year TTL (31536000 seconds)
+# Column Families: price_data, bet_data, analysis (aligned with batch_layer)
+# Using GZ compression to match create_table.sh
 create_table_if_not_exists "market_analytics" \
-    "{NAME => 'prices', VERSIONS => 1, COMPRESSION => 'SNAPPY', TTL => 31536000}, {NAME => 'betting', VERSIONS => 1, COMPRESSION => 'SNAPPY', TTL => 31536000}, {NAME => 'correlation', VERSIONS => 1, COMPRESSION => 'SNAPPY', TTL => 31536000}"
+    "{NAME => 'price_data', VERSIONS => 1, COMPRESSION => 'GZ', TTL => 31536000}, {NAME => 'bet_data', VERSIONS => 1, COMPRESSION => 'GZ', TTL => 31536000}, {NAME => 'analysis', VERSIONS => 1, COMPRESSION => 'GZ', TTL => 31536000}"
 
 # Market Live Table (Speed Layer)
 # Column Family: d (compact name for live data)
@@ -95,7 +95,7 @@ echo "   HBase Setup Complete!"
 echo "=================================================="
 echo ""
 echo "Tables created:"
-echo "  - market_analytics (Batch Layer: prices, betting, correlation)"
+echo "  - market_analytics (Batch Layer: price_data, bet_data, analysis)"
 echo "  - market_live (Speed Layer: d)"
 echo ""
 echo "To verify, run: hbase shell"

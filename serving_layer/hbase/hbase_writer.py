@@ -220,11 +220,12 @@ class HBaseWriter:
         if not row:
             return None
         
-        # Parse the row data
-        result = {'rowkey': rowkey, 'prices': {}, 'betting': {}, 'correlation': {}}
+        # Parse the row data - map to logical names regardless of actual CF names
+        result = {'rowkey': rowkey, 'price_data': {}, 'bet_data': {}, 'analysis': {}}
         for key, value in row.items():
             cf, col = key.decode().split(':')
-            result[cf][col] = value.decode()
+            if cf in result:
+                result[cf][col] = value.decode()
         
         return result
     
@@ -288,9 +289,9 @@ def run_self_test():
             rowkey = writer.write_batch_analytics(
                 symbol='TEST',
                 window_end_ts=test_ts,
-                prices_data={'open': 100.0, 'close': 101.5, 'high': 102.0, 'low': 99.5, 'volume': 1000.0, 'volatility': 0.025},
-                betting_data={'avg_prob_up': 0.65, 'avg_prob_down': 0.35, 'total_bet_vol': 5000.0, 'sentiment_score': 0.15},
-                correlation_data={'prediction_result': 'CORRECT', 'divergence': 0.05}
+                prices_data={'open': 100.0, 'close': 101.5, 'high': 102.0, 'low': 99.5, 'volume': 1000.0},
+                betting_data={'avg_prob': 0.65, 'max_prob': 0.75, 'activity': 50},
+                correlation_data={'result': 'CORRECT_BULL', 'price_movement': 0.015, 'actual_direction': 'UP', 'predicted_direction': 'UP'}
             )
             print(f"    ✓ Wrote batch record with RowKey: {rowkey}")
             
@@ -298,7 +299,7 @@ def run_self_test():
             print("\n[3] Testing batch layer read...")
             record = writer.get_batch_record('TEST', test_ts)
             if record:
-                print(f"    ✓ Read back record: prices.close={record['prices'].get('close')}")
+                print(f"    ✓ Read back record: price_data.close={record['price_data'].get('close')}")
             else:
                 print("    ✗ Failed to read back record")
                 return False

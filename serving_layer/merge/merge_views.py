@@ -205,14 +205,15 @@ class MergeEngine:
             'window_end_ts': int(ts),
             'window_end_time': datetime.fromtimestamp(int(ts)).isoformat(),
             'source': 'batch',
-            'prices': {},
-            'betting': {},
-            'correlation': {}
+            'price_data': {},
+            'bet_data': {},
+            'analysis': {}
         }
         
         for key, value in data.items():
             cf, col = key.decode().split(':')
-            record[cf][col] = self._parse_value(value.decode())
+            if cf in record:
+                record[cf][col] = self._parse_value(value.decode())
         
         return record
     
@@ -277,9 +278,9 @@ class MergeEngine:
                 'source': 'batch',
                 'type': 'window_summary',
                 'data': {
-                    'prices': record['prices'],
-                    'betting': record['betting'],
-                    'correlation': record['correlation']
+                    'price_data': record['price_data'],
+                    'bet_data': record['bet_data'],
+                    'analysis': record['analysis']
                 }
             })
         
@@ -340,9 +341,9 @@ class MergeEngine:
                 'source': 'batch',
                 'timestamp': latest['window_end_ts'],
                 'time': latest['window_end_time'],
-                'prices': latest['prices'],
-                'betting': latest['betting'],
-                'correlation': latest['correlation']
+                'price_data': latest['price_data'],
+                'bet_data': latest['bet_data'],
+                'analysis': latest['analysis']
             }
         
         return None
@@ -370,7 +371,7 @@ class MergeEngine:
         if not analytics:
             return {'symbol': symbol, 'windows_analyzed': 0, 'accuracy': None}
         
-        correct = sum(1 for r in analytics if r['correlation'].get('prediction_result') == 'CORRECT')
+        correct = sum(1 for r in analytics if r['analysis'].get('result', '').startswith('CORRECT'))
         total = len(analytics)
         
         return {

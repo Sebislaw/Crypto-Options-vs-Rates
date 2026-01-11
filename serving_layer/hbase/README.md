@@ -19,10 +19,10 @@ This module provides the HBase infrastructure for the Lambda Architecture servin
 Stores 15-minute window aggregations from batch processing.
 
 - **RowKey**: `SYMBOL#WINDOW_END_TIMESTAMP` (e.g., `BTC#1767201300`)
-- **Column Families**:
-  - `prices`: open, close, high, low, volume, volatility
-  - `betting`: avg_prob_up, avg_prob_down, total_bet_vol, sentiment_score
-  - `correlation`: prediction_result, divergence
+- **Column Families** (aligned with `batch_layer/spark/batch_analytics.py`):
+  - `price_data`: open, close, high, low, volume
+  - `bet_data`: avg_prob, max_prob, activity
+  - `analysis`: result, price_movement, actual_direction, predicted_direction, timestamp, symbol, crypto
 
 ### `market_live` (Speed Layer)
 

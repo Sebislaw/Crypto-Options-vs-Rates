@@ -26,10 +26,10 @@ TABLE_MARKET_LIVE = 'market_live'            # Speed layer output
 # Column Families
 # ==============================================================================
 
-# market_analytics column families
-CF_PRICES = 'prices'           # Binance price data
-CF_BETTING = 'betting'         # Polymarket betting data  
-CF_CORRELATION = 'correlation' # Analytics results
+# market_analytics column families (aligned with batch_layer/spark/config.py)
+CF_PRICES = 'price_data'       # Binance price data
+CF_BETTING = 'bet_data'        # Polymarket betting data
+CF_CORRELATION = 'analysis'    # Analytics results
 
 # market_live column families
 CF_DATA = 'd'  # Compact name for live data
@@ -39,23 +39,27 @@ CF_DATA = 'd'  # Compact name for live data
 # Column Qualifiers (within column families)
 # ==============================================================================
 
-# prices:* columns
+# price_data:* columns
 COL_OPEN = 'open'
 COL_CLOSE = 'close'
 COL_HIGH = 'high'
 COL_LOW = 'low'
 COL_VOLUME = 'volume'
-COL_VOLATILITY = 'volatility'
+COL_VOLATILITY = 'volatility'  # Keep for compatibility
 
-# betting:* columns
-COL_AVG_PROB_UP = 'avg_prob_up'
-COL_AVG_PROB_DOWN = 'avg_prob_down'
-COL_TOTAL_BET_VOL = 'total_bet_vol'
-COL_SENTIMENT_SCORE = 'sentiment_score'
+# bet_data:* columns
+COL_AVG_PROB = 'avg_prob'
+COL_MAX_PROB = 'max_prob'
+COL_BET_ACTIVITY = 'activity'
 
-# correlation:* columns
-COL_PREDICTION_RESULT = 'prediction_result'
-COL_DIVERGENCE = 'divergence'
+# analysis:* columns
+COL_PREDICTION_RESULT = 'result'
+COL_PRICE_MOVEMENT = 'price_movement'
+COL_ACTUAL_DIRECTION = 'actual_direction'
+COL_PREDICTED_DIRECTION = 'predicted_direction'
+COL_TIMESTAMP = 'timestamp'
+COL_SYMBOL = 'symbol'
+COL_CRYPTO = 'crypto'
 
 # d:* columns (live data)
 COL_BINANCE_PRICE = 'binance_price'

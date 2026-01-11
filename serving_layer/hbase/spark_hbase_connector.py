@@ -56,12 +56,12 @@ def write_batch_to_hbase(
     """
     Write a Spark DataFrame to HBase market_analytics table.
     
-    Expected DataFrame columns:
+    Expected DataFrame columns (aligned with batch_layer/spark/batch_analytics.py):
         - symbol: String (e.g., 'BTC')
         - window_end_ts: Long (Unix timestamp)
-        - open, close, high, low, volume, volatility: Double (prices)
-        - avg_prob_up, avg_prob_down, total_bet_vol, sentiment_score: Double (betting)
-        - prediction_result: String, divergence: Double (correlation)
+        - price_open, price_close, price_high, price_low, avg_volume: Double (price_data)
+        - avg_probability, max_probability, bet_activity_count: Double (bet_data)
+        - price_movement, actual_direction, predicted_direction, prediction_result: String (analysis)
     
     Args:
         df: Spark DataFrame with the expected schema
@@ -88,20 +88,31 @@ def write_batch_to_hbase(
             # Build data dict
             data = {}
             
-            # Prices column family
-            for col_name in ['open', 'close', 'high', 'low', 'volume', 'volatility']:
+            # price_data column family
+            for col_name in ['open', 'close', 'high', 'low', 'volume']:
                 if row.get(col_name) is not None:
-                    data[f'prices:{col_name}'.encode()] = str(row[col_name]).encode()
+                    data[f'price_data:{col_name}'.encode()] = str(row[col_name]).encode()
+            for src, dest in [('price_open', 'open'), ('price_close', 'close'), 
+                             ('price_high', 'high'), ('price_low', 'low'), ('avg_volume', 'volume')]:
+                if row.get(src) is not None:
+                    data[f'price_data:{dest}'.encode()] = str(row[src]).encode()
             
-            # Betting column family
-            for col_name in ['avg_prob_up', 'avg_prob_down', 'total_bet_vol', 'sentiment_score']:
+            # bet_data column family
+            for col_name in ['avg_prob', 'max_prob', 'activity']:
                 if row.get(col_name) is not None:
-                    data[f'betting:{col_name}'.encode()] = str(row[col_name]).encode()
+                    data[f'bet_data:{col_name}'.encode()] = str(row[col_name]).encode()
+            for src, dest in [('avg_probability', 'avg_prob'), ('max_probability', 'max_prob'),
+                             ('bet_activity_count', 'activity')]:
+                if row.get(src) is not None:
+                    data[f'bet_data:{dest}'.encode()] = str(row[src]).encode()
             
-            # Correlation column family
-            for col_name in ['prediction_result', 'divergence']:
+            # analysis column family
+            for col_name in ['result', 'price_movement', 'actual_direction', 'predicted_direction',
+                            'timestamp', 'symbol', 'crypto']:
                 if row.get(col_name) is not None:
-                    data[f'correlation:{col_name}'.encode()] = str(row[col_name]).encode()
+                    data[f'analysis:{col_name}'.encode()] = str(row[col_name]).encode()
+            if row.get('prediction_result') is not None:
+                data[b'analysis:result'] = str(row['prediction_result']).encode()
             
             batch.put(rowkey.encode(), data)
             count += 1
