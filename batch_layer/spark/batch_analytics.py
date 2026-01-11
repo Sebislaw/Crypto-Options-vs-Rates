@@ -86,7 +86,8 @@ def load_polymarket_data(spark, date_filter=None):
     Returns:
         DataFrame with processed Polymarket data
     """
-    df = spark.sql(f"SELECT * FROM {config.POLYMARKET_TABLE}")
+    # Select only columns we need, avoiding complex nested bids/asks structures
+    df = spark.sql(f"SELECT market, asset_id, `timestamp`, last_trade_price, event_type, `date` FROM {config.POLYMARKET_TABLE}")
     
     if date_filter:
         df = df.filter(col("date") == date_filter)
@@ -102,13 +103,97 @@ def load_polymarket_data(spark, date_filter=None):
     # Cast last_trade_price from string to double
     df = df.withColumn("price", col("last_trade_price").cast(DoubleType()))
     
-    # Clean market field - extract just the crypto symbol
-    df = df.withColumn("crypto",
-        when(col("market").contains("btc"), "btc")
-        .when(col("market").contains("eth"), "eth")
-        .when(col("market").contains("sol"), "sol")
-        .when(col("market").contains("xrp"), "xrp")
-        .otherwise(col("market"))
+    # TODO: Ingestion layer should add 'crypto_symbol' field to Polymarket data
+    # For now, assume all Polymarket data is for Bitcoin
+    df = df.withColumn("crypto", lit(config.DEFAULT_CRYPTO))
+    
+    return df.select(
+        col("ts").alias("poly_time"),
+        "crypto",
+        "asset_id",  # Keep for debugging
+        "market",    # Keep for debugging  
+        "price",
+        "event_type",
+        "date"
+    ).filter(col("price").isNotNull())
+
+
+def aggregate_to_windows(binance_df, polymarket_df):
+    """
+    Aggregate both datasets to 15-minute windows
+    
+    Args:
+        binance_df: Binance DataFrame
+        polymarket_df: Polymarket DataFrame
+    
+    Returns:
+        Tuple of (binance_windows, polymarket_windows) DataFrames
+    """
+    
+    # Aggregate Binance to 15-min OHLC windows
+    binance_windows = binance_df.filter(col("binance_time").isNotNull()) \
+        .groupBy(window(col("binance_time"), config.WINDOW_DURATION), "crypto", "symbol") \
+        .agg(
+        first("open").alias("window_open"),
+        max("high").alias("window_high"),
+        min("low").alias("window_low"),
+        last("close").alias("window_close"),
+        avg("volume").alias("avg_volume"),
+        count("*").alias("candle_count")
+    ).withColumn("window_start", col("window.start")) \
+     .withColumn("window_end", col("window.end")) \
+     .drop("window")
+    
+    # Aggregate Polymarket to 15-min windows by crypto
+    polymarket_windows = polymarket_df.filter(col("poly_time").isNotNull()) \
+        .groupBy(window(col("poly_time"), config.WINDOW_DURATION), "crypto") \
+        .agg(
+        avg("price").alias("avg_probability"),
+        max("price").alias("max_probability"),
+        min("price").alias("min_probability"),
+        last("price").alias("last_probability"),
+        count("*").alias("bet_activity_count")
+    ).withColumn("window_start", col("window.start")) \
+     .withColumn("window_end", col("window.end")) \
+     .drop("window")
+    
+    return binance_windows, polymarket_windows
+
+
+def join_and_analyze(binance_windows, polymarket_windows):
+    """
+    Join datasets and compute analytical metrics
+    
+    Args:
+        binance_windows: Aggregated Binance data
+        polymarket_windows: Aggregated Polymarket data
+    
+    Returns:
+        DataFrame with analysis results
+    """
+    
+    # Join on window_start AND crypto to match predictions with actual price movements
+    joined = binance_windows.alias("b").join(
+        polymarket_windows.alias("p"),
+        (binance_windows.window_start == polymarket_windows.window_start) &
+        (binance_windows.crypto == polymarket_windows.crypto),
+        "inner"
+    ).select(
+        col("b.window_start"),
+        col("b.window_end"),
+        col("b.crypto"),
+        col("b.symbol"),
+        col("b.window_open"),
+        col("b.window_high"),
+        col("b.window_low"),
+        col("b.window_close"),
+        col("b.avg_volume"),
+        col("b.candle_count"),
+        col("p.avg_probability"),
+        col("p.max_probability"),
+        col("p.min_probability"),
+        col("p.last_probability"),
+        col("p.bet_activity_count")
     )
     
     return df.select(

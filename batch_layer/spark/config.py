@@ -27,6 +27,11 @@ SYMBOL_MAPPING = {
     'xrp': 'XRPUSDT'
 }
 
+# Polymarket Crypto Mapping
+# TODO: Update ingestion layer to include a 'crypto_symbol' field in Polymarket data
+# For now, assume all Polymarket data is for Bitcoin
+DEFAULT_CRYPTO = 'btc'
+
 # Analysis Thresholds
 PREDICTION_THRESHOLD = 0.60  # Probability threshold for "bullish" prediction
 MIN_PRICE_MOVEMENT = 0.001    # Minimum price change to consider (0.1%)
