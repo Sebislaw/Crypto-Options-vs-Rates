@@ -93,6 +93,20 @@ else
     echo "       You may need to deploy the template manually."
 fi
 
+# 9. Setup HBase Tables (Serving Layer)
+echo "=================================================="
+echo "   Setting up HBase (serving_layer)"
+echo "=================================================="
+HBASE_SETUP_SCRIPT="$PROJECT_ROOT/serving_layer/hbase/setup_hbase.sh"
+
+if [ -f "$HBASE_SETUP_SCRIPT" ]; then
+    echo "   -> Executing HBase setup script..."
+    bash "$HBASE_SETUP_SCRIPT"
+else
+    echo "   [!] WARNING: HBase setup script not found at $HBASE_SETUP_SCRIPT"
+    echo "       HBase tables may not be initialized."
+fi
+
 
 
 echo "=================================================="

@@ -24,3 +24,6 @@ pydantic-settings==2.2.1
 
 ## Development & Testing
 pytest>=8.0.0
+
+## HBase Serving Layer
+happybase>=1.2.0  # HBase Python client via Thrift
