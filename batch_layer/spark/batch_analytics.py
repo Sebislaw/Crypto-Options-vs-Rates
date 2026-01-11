@@ -179,11 +179,28 @@ def join_and_analyze(binance_windows, polymarket_windows):
     """
     
     # Join on window start time and crypto symbol
-    joined = binance_windows.join(
-        polymarket_windows,
+    # Drop duplicate columns from polymarket side after join
+    joined = binance_windows.alias("b").join(
+        polymarket_windows.alias("p"),
         (binance_windows.window_start == polymarket_windows.window_start) &
         (binance_windows.crypto == polymarket_windows.crypto),
         "inner"
+    ).select(
+        col("b.window_start"),
+        col("b.window_end"),
+        col("b.crypto"),
+        col("b.symbol"),
+        col("b.window_open"),
+        col("b.window_high"),
+        col("b.window_low"),
+        col("b.window_close"),
+        col("b.avg_volume"),
+        col("b.candle_count"),
+        col("p.avg_probability"),
+        col("p.max_probability"),
+        col("p.min_probability"),
+        col("p.last_probability"),
+        col("p.bet_activity_count")
     )
     
     # Calculate price movement
@@ -227,9 +244,9 @@ def join_and_analyze(binance_windows, polymarket_windows):
     )
     
     return joined.select(
-        col("binance_windows.window_start").alias("window_start"),
-        col("binance_windows.crypto").alias("crypto"),
-        col("binance_windows.symbol").alias("symbol"),
+        "window_start",
+        "crypto",
+        "symbol",
         "window_open",
         "window_high",
         "window_low",
