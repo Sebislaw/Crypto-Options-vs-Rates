@@ -50,8 +50,8 @@ def load_binance_data(spark, date_filter=None):
     if date_filter:
         df = df.filter(col("date") == date_filter)
     
-    # Convert timestamp from milliseconds to timestamp type
-    df = df.withColumn("ts", to_timestamp(col("timestamp") / 1000))
+    # Convert timestamp from nanoseconds to timestamp type (divide by 1 billion)
+    df = df.withColumn("ts", to_timestamp(col("timestamp") / 1000000000))
     
     # Map symbol to crypto name for joining
     df = df.withColumn("crypto", 
