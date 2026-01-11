@@ -35,7 +35,7 @@ create_if_not_exists 'market_analytics', \
 # ==============================================================================
 
 create_if_not_exists 'market_live', \
-  {NAME => 'd', VERSIONS => 1, COMPRESSION => 'SNAPPY', TTL => 86400}
+  {NAME => 'd', VERSIONS => 1, COMPRESSION => 'GZ', TTL => 86400}
 
 # Column Family Details:
 # d: Compact name for live data (reduces storage overhead)

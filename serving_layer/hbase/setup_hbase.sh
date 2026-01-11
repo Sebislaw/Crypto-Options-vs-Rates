@@ -78,8 +78,9 @@ create_table_if_not_exists "market_analytics" \
 # Market Live Table (Speed Layer)
 # Column Family: d (compact name for live data)
 # 1-day TTL (86400 seconds) - only recent data needed
+# Using GZ compression
 create_table_if_not_exists "market_live" \
-    "{NAME => 'd', VERSIONS => 1, COMPRESSION => 'SNAPPY', TTL => 86400}"
+    "{NAME => 'd', VERSIONS => 1, COMPRESSION => 'GZ', TTL => 86400}"
 
 # ------------------------------------------------------------------------------
 # 4. Verify Tables
