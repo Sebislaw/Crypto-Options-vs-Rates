@@ -32,25 +32,15 @@ TBLPROPERTIES ('parquet.compression'='SNAPPY');
 -- 2. POLYMARKET TRADE TABLE (Orderbook Data)
 -- ============================================================================
 CREATE EXTERNAL TABLE IF NOT EXISTS polymarket_orderbook (
-    market STRING COMMENT 'Market identifier (btc/eth/sol/xrp)',
-    asset_id STRING COMMENT 'CLOB token ID',
-    timestamp STRING COMMENT 'Event timestamp (may be string format)',
-    hash STRING COMMENT 'Event hash',
-    event_type STRING COMMENT 'Type of event (price_change, book, etc.)',
-    last_trade_price STRING COMMENT 'Most recent trade price (probability 0-1)',
-    bids ARRAY<STRUCT<price:STRING, size:STRING>> COMMENT 'Bid orders',
-    asks ARRAY<STRUCT<price:STRING, size:STRING>> COMMENT 'Ask orders',
-    price_changes ARRAY<STRUCT<
-        asset_id:STRING,
-        price:STRING,
-        size:STRING,
-        side:STRING,
-        hash:STRING,
-        best_bid:STRING,
-        best_ask:STRING
-    >> COMMENT 'Price change events'
+    market STRING COMMENT 'Market identifier (e.g., btc)',
+    asset_id STRING COMMENT 'Asset ID on Polymarket',
+    `timestamp` BIGINT COMMENT 'Trade timestamp in milliseconds',
+    last_trade_price DOUBLE COMMENT 'Probability 0-1 (price of Yes token)',
+    bids STRING COMMENT 'Bid orders (JSON array)',
+    asks STRING COMMENT 'Ask orders (JSON array)',
+    event_type STRING COMMENT 'WebSocket event type'
 )
-PARTITIONED BY (date DATE COMMENT 'Partition by date')
+PARTITIONED BY (`date` DATE COMMENT 'Partition by date')
 STORED AS PARQUET
 LOCATION '/user/vagrant/cleansed/polymarket_trade'
 TBLPROPERTIES ('parquet.compression'='SNAPPY');
