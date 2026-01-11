@@ -15,6 +15,6 @@ SHOW PARTITIONS binance_klines;
 SHOW PARTITIONS polymarket_orderbook;
 
 -- Quick data check
-SELECT 'Binance row count' as table_name, COUNT(*) as rows FROM binance_klines
+SELECT 'Binance row count' as table_name, COUNT(*) as `rows` FROM binance_klines
 UNION ALL
-SELECT 'Polymarket row count' as table_name, COUNT(*) as rows FROM polymarket_orderbook;
+SELECT 'Polymarket row count' as table_name, COUNT(*) as `rows` FROM polymarket_orderbook;
