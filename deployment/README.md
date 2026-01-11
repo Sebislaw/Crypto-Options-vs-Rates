@@ -64,7 +64,7 @@ Make sure the pipeline is stopped via `console_scripts/stop_ingestion.sh` before
 
 ### When resuming the VM
 
-For resumming the VM withour errors, there are 2 approaches, with the first one being preferred:
+For resuming the VM without errors, there are 2 approaches, with the first one being preferred:
 
 1. Use the VirtualBox `Save the machine state` option. This saves the current state, without turning anything off. If the system worked before, chances are, now it will too.
 
@@ -130,12 +130,12 @@ To view each Kafka topic stream data:
 
 The first part of the speed layer is Kafka, which partly is implemented in the ingestion layer in `NiFI_Flow.xml`. Kafka serves as an ingestion phase component dedicated for the speed layer.
 
-Three Kafka topics are created: `binance`, `polymarket_trade` and `polymarket_metadata`. The first 2 are streamed into Spark in the speed layer. The metadata topic is currently not used, as saving historical data (15 minute markets, so 15 minutes at least) in the speed layer is not a functional choice bacause of the virtual machines we use for development. The metadata from batch layer will be used in the serving layer to correctly map the data in from the speed layer.
+Three Kafka topics are created: `binance`, `polymarket_trade` and `polymarket_metadata`. The first 2 are streamed into Spark in the speed layer. The metadata topic is currently not used, as saving historical data (15 minute markets, so 15 minutes at least) in the speed layer is not a functional choice beacuse of the virtual machines we use for development. The metadata from batch layer will be used in the serving layer to correctly map the data in from the speed layer.
 
 Spark implementation for the speed layer is located in `speed_layer/spark` directory. Script `console_scripts/initialize_project.sh` sets up the spark job and the data from spark is saved directly in the HBASE-TODO (currently not saved to HBASE).
 
 To see spark batches: 
 
 ```bash
-tail -f ~/Crypto-Options-vs-Rates/logs/spark_speed_layer.log`
+tail -f ~/Crypto-Options-vs-Rates/logs/spark_speed_layer.log
 ```

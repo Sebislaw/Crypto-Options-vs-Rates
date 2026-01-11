@@ -1,5 +1,22 @@
 #!/bin/bash
 
+# ==============================================================================
+# Script Name: setup_kafka.sh
+# Description: Deploys and configures Apache Kafka for the Speed Layer.
+#              Manages Zookeeper, Kafka Broker, and creates necessary topics
+#              for streaming cryptocurrency and prediction market data.
+# Location: speed_layer/kafka/setup_kafka.sh
+# 
+# Topics Created:
+#   - binance: Cryptocurrency price and volume data from Binance
+#   - polymarket_trade: Trade events from Polymarket prediction markets
+#   - polymarket_metadata: Market metadata from Polymarket
+#
+# Prerequisites:
+#   - Apache Kafka installed at /usr/local/kafka
+#   - Sufficient permissions to start services
+# ==============================================================================
+
 # Kafka Installation Path
 KAFKA_HOME="/usr/local/kafka"
 KAFKA_BIN="$KAFKA_HOME/bin"
@@ -38,7 +55,16 @@ echo "--------------------------------------------------"
 echo "Creating Topics..."
 echo "--------------------------------------------------"
 
-# Function to create topic if it doesn't exist
+# ------------------------------------------------------------------------------
+# Function: create_topic
+# Description: Creates a Kafka topic if it doesn't already exist.
+#              Checks for topic existence before attempting creation to avoid errors.
+# Parameters:
+#   $1 - TOPIC_NAME: Name of the Kafka topic to create
+# Configuration:
+#   - Replication Factor: 1 (suitable for single-node setup)
+#   - Partitions: 1 (can be increased for higher throughput)
+# ------------------------------------------------------------------------------
 create_topic() {
     TOPIC_NAME=$1
     # Check if topic exists
