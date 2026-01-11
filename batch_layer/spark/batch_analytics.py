@@ -437,6 +437,12 @@ def main(date_filter=None):
         print(f"      Binance windows: {binance_windows.count()}")
         print(f"      Polymarket windows: {polymarket_windows.count()}")
         
+        # DEBUG: Show window samples
+        print("\n[DEBUG] Binance window samples:")
+        binance_windows.select("window_start", "crypto", "symbol").show(5, truncate=False)
+        print("\n[DEBUG] Polymarket window samples:")
+        polymarket_windows.select("window_start", "crypto").show(5, truncate=False)
+        
         # Step 3: Join and analyze
         print("\n[4/6] Joining data and computing analytics...")
         analysis_df = join_and_analyze(binance_windows, polymarket_windows)
