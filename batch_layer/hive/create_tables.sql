@@ -35,7 +35,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS polymarket_orderbook (
     market STRING COMMENT 'Market identifier (e.g., btc)',
     asset_id STRING COMMENT 'Asset ID on Polymarket',
     `timestamp` BIGINT COMMENT 'Trade timestamp in milliseconds',
-    last_trade_price DOUBLE COMMENT 'Probability 0-1 (price of Yes token)',
+    last_trade_price STRING COMMENT 'Probability 0-1 as string (will cast to double)',
     bids STRING COMMENT 'Bid orders (JSON array)',
     asks STRING COMMENT 'Ask orders (JSON array)',
     event_type STRING COMMENT 'WebSocket event type'
