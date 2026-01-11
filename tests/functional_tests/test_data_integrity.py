@@ -137,18 +137,16 @@ class TestBatchWriteRead(unittest.TestCase):
     def test_write_batch_record(self):
         """WR-001: Write a batch analytics record."""
         data = {
-            b'prices:open': b'100.50',
-            b'prices:close': b'102.75',
-            b'prices:high': b'103.00',
-            b'prices:low': b'99.80',
-            b'prices:volume': b'50000.00',
-            b'prices:volatility': b'0.025',
-            b'betting:avg_prob_up': b'0.65',
-            b'betting:avg_prob_down': b'0.35',
-            b'betting:total_bet_vol': b'10000.00',
-            b'betting:sentiment_score': b'0.15',
-            b'correlation:prediction_result': b'CORRECT',
-            b'correlation:divergence': b'0.05',
+            b'price_data:open': b'100.50',
+            b'price_data:close': b'102.75',
+            b'price_data:high': b'103.00',
+            b'price_data:low': b'99.80',
+            b'price_data:volume': b'50000.00',
+            b'bet_data:avg_prob': b'0.65',
+            b'bet_data:max_prob': b'0.75',
+            b'bet_data:activity': b'50',
+            b'analysis:result': b'CORRECT_BULL',
+            b'analysis:price_movement': b'0.05',
         }
         
         self.table.put(self.test_rowkey.encode(), data)
@@ -163,18 +161,18 @@ class TestBatchWriteRead(unittest.TestCase):
         """WR-002: Read back a batch analytics record."""
         # First write
         data = {
-            b'prices:close': b'102.75',
-            b'betting:avg_prob_up': b'0.65',
-            b'correlation:prediction_result': b'CORRECT',
+            b'price_data:close': b'102.75',
+            b'bet_data:avg_prob': b'0.65',
+            b'analysis:result': b'CORRECT_BULL',
         }
         self.table.put(self.test_rowkey.encode(), data)
         
         # Then read
         row = self.table.row(self.test_rowkey.encode())
         
-        self.assertEqual(row.get(b'prices:close'), b'102.75')
-        self.assertEqual(row.get(b'betting:avg_prob_up'), b'0.65')
-        self.assertEqual(row.get(b'correlation:prediction_result'), b'CORRECT')
+        self.assertEqual(row.get(b'price_data:close'), b'102.75')
+        self.assertEqual(row.get(b'bet_data:avg_prob'), b'0.65')
+        self.assertEqual(row.get(b'analysis:result'), b'CORRECT_BULL')
 
 
 class TestLiveWriteRead(unittest.TestCase):
@@ -283,26 +281,26 @@ class TestDataTypePrecision(unittest.TestCase):
         
         self.table.put(
             self.test_rowkey.encode(),
-            {b'prices:close': str(original_value).encode()}
+            {b'price_data:close': str(original_value).encode()}
         )
         
         row = self.table.row(self.test_rowkey.encode())
-        retrieved_value = float(row[b'prices:close'].decode())
+        retrieved_value = float(row[b'price_data:close'].decode())
         
         self.assertAlmostEqual(retrieved_value, original_value, places=6)
     
     @skip_if_no_hbase
     def test_string_values(self):
         """String values should be stored and retrieved correctly."""
-        original_value = 'CORRECT'
+        original_value = 'CORRECT_BULL'
         
         self.table.put(
             self.test_rowkey.encode(),
-            {b'correlation:prediction_result': original_value.encode()}
+            {b'analysis:result': original_value.encode()}
         )
         
         row = self.table.row(self.test_rowkey.encode())
-        retrieved_value = row[b'correlation:prediction_result'].decode()
+        retrieved_value = row[b'analysis:result'].decode()
         
         self.assertEqual(retrieved_value, original_value)
 
