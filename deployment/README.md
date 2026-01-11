@@ -64,9 +64,15 @@ Make sure the pipeline is stopped via `console_scripts/stop_ingestion.sh` before
 
 ### When resuming the VM
 
-Do not run the `initialize_project.sh` script again.
+For resumming the VM withour errors, there are 2 approaches, with the first one being preferred:
 
-Start services: `sudo /home/vagrant/scripts/bootstrap.sh`.
+1. Use the VirtualBox `Save the machine state` option. This saves the current state, without turning anything off. If the system worked before, chances are, now it will too.
+
+2. Do a proper shutdown. This closes some of the services and causes problems with zombie processes in NiFi. To make the system work again, you have to manually execute the steps below. Starting the NiFi again will cause it to fetch files from hdfs again, which can take some time. The steps to take:
+
+- Manually delete all elements from `http://localhost:9443/nifi/`.
+
+- Run `initialize_project.sh`.
 
 ### When setting up a new VM
 
