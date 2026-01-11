@@ -552,16 +552,19 @@ def main(date_filter=None):
         print("\n[5/6] Preparing HBase output format...")
         hbase_df = prepare_hbase_output(analysis_df)
         
-        # Step 5: Write to HBase
+        # Step 5: Save results to Parquet (always)
+        print("\n[5/6] Saving results to HDFS...")
+        backup_path = "/user/vagrant/batch/analytics_results"
+        save_as_parquet_backup(analysis_df, backup_path)
+        
+        # Step 6: Write to HBase (optional - requires happybase)
         print("\n[6/6] Writing to HBase...")
         try:
             write_to_hbase(hbase_df)
             print("      Successfully wrote to HBase!")
         except Exception as e:
-            print(f"      HBase write failed: {e}")
-            print("      Saving to Parquet backup instead...")
-            backup_path = "/user/vagrant/batch/analytics_results"
-            save_as_parquet_backup(hbase_df, backup_path)
+            print(f"      HBase write skipped (happybase not available)")
+            print(f"      Results saved to: {backup_path}")
         
         # Summary statistics
         print("\n" + "="*60)
