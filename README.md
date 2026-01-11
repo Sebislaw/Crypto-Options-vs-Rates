@@ -20,6 +20,8 @@ Defines how **raw and processed data** are stored and processed in the batch pat
 - **`hadoop/`** – Configuration of directory layout, partitioning, and storage conventions in HDFS.
 - **`hive/`** – Hive DDL scripts and database/table definitions for structured batch storage.
 - **`spark/`** – PySpark jobs for ETL, data cleaning, and generation of analytical batch views.
+- **`hbase/`** – HBase table creation and schema definitions for serving processed analytics.
+- **Quick Start**: See `batch_layer/QUICKSTART.md` for execution guide.
 
 ### `speed_layer/`
 Implements **real-time (speed layer)** buffering and processing:
