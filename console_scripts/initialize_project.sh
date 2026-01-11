@@ -78,7 +78,7 @@ else
     echo "       Kafka may not be initialized."
 fi
 
-# 8. Deploy NiFi Flow (NEW SECTION)
+# 8. Deploy NiFi Flow
 echo "=================================================="
 echo "   Deploying NiFi Configuration"
 echo "=================================================="
@@ -91,18 +91,6 @@ if [ -f "$DEPLOY_NIFI_SCRIPT" ]; then
 else
     echo "   [!] WARNING: NiFi deployment script not found at $DEPLOY_NIFI_SCRIPT"
     echo "       You may need to deploy the template manually."
-fi
-
-# 9. Setup Spark
-echo "=================================================="
-echo "   Setting up Spark (speed_layer)"
-echo "=================================================="
-SPARK_SETUP_SCRIPT="$PROJECT_ROOT/speed_layer/spark/setup_spark.sh"
-
-if [ -f "$SPARK_SETUP_SCRIPT" ]; then
-    bash "$SPARK_SETUP_SCRIPT"
-else
-    echo "   [!] WARNING: Spark setup script not found at $SPARK_SETUP_SCRIPT"
 fi
 
 echo "=================================================="
