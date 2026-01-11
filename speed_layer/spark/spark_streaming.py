@@ -250,50 +250,28 @@ poly_agg = poly_clean \
     )
 
 # --- 6. OUTPUT SINKS ---
-# Write aggregated results to multiple destinations:
-# 1. Console - For real-time monitoring and debugging
-# 2. HDFS Parquet - For persistence and downstream integration with serving layer
+# Write aggregated results to console for real-time monitoring
+# Note: Console sink doesn't require checkpoint locations
+# TODO: Add HBase or HDFS sink for persistence when VM HDFS configuration is ready
 #
 # Output Mode: "update" - Only changed aggregations are output
 # Trigger: Process every 5 seconds for near real-time results
 
 print(">>> Starting Advanced Stream Processing...")
 
-# Start Binance aggregation output streams
-# Console output for monitoring
-query_binance_console = binance_agg.writeStream \
+# Start Binance aggregation output stream
+query_binance = binance_agg.writeStream \
     .outputMode("update") \
     .format("console") \
     .option("truncate", "false") \
-    .option("checkpointLocation", f"{CHECKPOINT_LOCATION}/binance_console") \
     .trigger(processingTime="5 seconds") \
     .start()
 
-# HDFS output for persistence (downstream serving layer integration)
-query_binance_hdfs = binance_agg.writeStream \
-    .outputMode("append") \
-    .format("parquet") \
-    .option("path", "hdfs:///user/vagrant/speed_layer/binance") \
-    .option("checkpointLocation", f"{CHECKPOINT_LOCATION}/binance_hdfs") \
-    .trigger(processingTime="5 seconds") \
-    .start()
-
-# Start Polymarket aggregation output streams
-# Console output for monitoring
-query_poly_console = poly_agg.writeStream \
+# Start Polymarket aggregation output stream
+query_poly = poly_agg.writeStream \
     .outputMode("update") \
     .format("console") \
     .option("truncate", "false") \
-    .option("checkpointLocation", f"{CHECKPOINT_LOCATION}/polymarket_console") \
-    .trigger(processingTime="5 seconds") \
-    .start()
-
-# HDFS output for persistence (downstream serving layer integration)
-query_poly_hdfs = poly_agg.writeStream \
-    .outputMode("append") \
-    .format("parquet") \
-    .option("path", "hdfs:///user/vagrant/speed_layer/polymarket") \
-    .option("checkpointLocation", f"{CHECKPOINT_LOCATION}/polymarket_hdfs") \
     .trigger(processingTime="5 seconds") \
     .start()
 
