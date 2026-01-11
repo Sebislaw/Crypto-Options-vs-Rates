@@ -2,7 +2,7 @@
 
 # ==============================================================================
 # Script Name: start_ingestion.sh
-# Description: Starts the Python Collectors (Binance & Polymarket).
+# Description: Starts Binance, Polymarket, AND Spark Streaming.
 # ==============================================================================
 
 # --- Configuration ---
@@ -15,7 +15,7 @@ PID_DIR="$PROJECT_ROOT/pids"
 mkdir -p "$LOG_DIR" "$PID_DIR"
 
 echo "=================================================="
-echo "   Starting Crypto Ingestion Collectors (HDFS Mode)"
+echo "   Starting Ingestion & Speed Layer"
 echo "=================================================="
 
 # 1. Verify Python Environment
@@ -24,7 +24,7 @@ if [ ! -f "$ENV_PYTHON" ]; then
     exit 1
 fi
 
-# 2. Check HDFS Status (Using direct admin report for accuracy)
+# 2. Check HDFS Status
 echo "[CHECK] Verifying Infrastructure status..."
 if hdfs dfsadmin -report > /dev/null 2>&1; then
     echo "   -> HDFS is running and reachable."
@@ -46,7 +46,17 @@ nohup "$ENV_PYTHON" -u ingestion_layer/polymarket/polymarket_clob.py >> "$LOG_DI
 echo $! > "$PID_DIR/polymarket_clob.pid"
 echo "   -> Polymarket CLOB Collector running (PID: $(cat $PID_DIR/polymarket_clob.pid))"
 
+# 5. Start Spark Streaming
+echo "[SPEED] Starting Spark Speed Layer..."
+nohup spark-submit \
+    --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2 \
+    "$PROJECT_ROOT/speed_layer/spark/spark_streaming.py" \
+    > "$LOG_DIR/spark_speed_layer.log" 2>&1 &
+
+echo $! > "$PID_DIR/spark_streaming.pid"
+echo "   -> Spark Job running (PID: $(cat $PID_DIR/spark_streaming.pid))"
+
 echo "=================================================="
-echo "   Collectors Started"
-echo "   Logs (Errors only) at: $LOG_DIR"
+echo "   All Systems Started!"
+echo "   Logs at: $LOG_DIR"
 echo "=================================================="
