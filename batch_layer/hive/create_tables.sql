@@ -7,13 +7,13 @@
 -- 1. BINANCE TABLE (Spot Price Data)
 -- ============================================================================
 CREATE EXTERNAL TABLE IF NOT EXISTS binance_klines (
-    timestamp BIGINT COMMENT 'Candle open time in milliseconds',
+    `timestamp` BIGINT COMMENT 'Candle open time in milliseconds',
     snapshot_time BIGINT COMMENT 'Time when data was captured',
-    open DOUBLE COMMENT 'Opening price',
-    high DOUBLE COMMENT 'Highest price in interval',
-    low DOUBLE COMMENT 'Lowest price in interval',
-    close DOUBLE COMMENT 'Closing price',
-    volume DOUBLE COMMENT 'Trading volume',
+    `open` DOUBLE COMMENT 'Opening price',
+    `high` DOUBLE COMMENT 'Highest price in interval',
+    `low` DOUBLE COMMENT 'Lowest price in interval',
+    `close` DOUBLE COMMENT 'Closing price',
+    `volume` DOUBLE COMMENT 'Trading volume',
     close_time BIGINT COMMENT 'Candle close time in milliseconds',
     quote_asset_volume DOUBLE COMMENT 'Quote asset volume',
     trades BIGINT COMMENT 'Number of trades',
@@ -22,7 +22,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS binance_klines (
     symbol STRING COMMENT 'Trading pair (e.g., BTCUSDT)',
     is_closed BOOLEAN COMMENT 'Whether the candle is closed'
 )
-PARTITIONED BY (date DATE COMMENT 'Partition by date')
+PARTITIONED BY (`date` DATE COMMENT 'Partition by date')
 STORED AS PARQUET
 LOCATION '/user/vagrant/cleansed/binance'
 TBLPROPERTIES ('parquet.compression'='SNAPPY');

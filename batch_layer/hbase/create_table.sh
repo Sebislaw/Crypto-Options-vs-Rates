@@ -24,11 +24,9 @@ drop 'market_analytics'
 
 # Create table with three column families
 create 'market_analytics', 
-  {NAME => 'price_data', VERSIONS => 1, COMPRESSION => 'SNAPPY'},
-  {NAME => 'bet_data', VERSIONS => 1, COMPRESSION => 'SNAPPY'},
-  {NAME => 'analysis', VERSIONS => 1, COMPRESSION => 'SNAPPY'}
-
-# Verify table creation
+  {NAME => 'price_data', VERSIONS => 1, COMPRESSION => 'GZ'},
+  {NAME => 'bet_data', VERSIONS => 1, COMPRESSION => 'GZ'},
+  {NAME => 'analysis', VERSIONS => 1, COMPRESSION => 'GZ'}
 describe 'market_analytics'
 
 # Show table list

@@ -21,6 +21,8 @@ def create_spark_session():
         .appName(config.APP_NAME) \
         .config("spark.sql.warehouse.dir", "/user/hive/warehouse") \
         .config("hive.metastore.uris", "thrift://localhost:9083") \
+        .config("spark.sql.hive.metastore.version", "2.3.0") \
+        .config("spark.sql.hive.metastore.jars", "maven") \
         .enableHiveSupport() \
         .getOrCreate()
 
