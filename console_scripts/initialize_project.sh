@@ -93,7 +93,17 @@ else
     echo "       You may need to deploy the template manually."
 fi
 
+# 9. Setup Spark
+echo "=================================================="
+echo "   Setting up Spark (speed_layer)"
+echo "=================================================="
+SPARK_SETUP_SCRIPT="$PROJECT_ROOT/speed_layer/spark/setup_spark.sh"
 
+if [ -f "$SPARK_SETUP_SCRIPT" ]; then
+    bash "$SPARK_SETUP_SCRIPT"
+else
+    echo "   [!] WARNING: Spark setup script not found at $SPARK_SETUP_SCRIPT"
+fi
 
 echo "=================================================="
 echo "   Initialization Complete!"
