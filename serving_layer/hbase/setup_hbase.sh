@@ -36,6 +36,24 @@ if ! command -v hbase &> /dev/null; then
 fi
 
 # ------------------------------------------------------------------------------
+# 1b. Ensure HBase Thrift server is running (required for HappyBase)
+# ------------------------------------------------------------------------------
+echo "[CHECK] Verifying HBase Thrift server..."
+
+if netstat -tuln 2>/dev/null | grep ":9090 " > /dev/null; then
+    echo "   -> HBase Thrift server is running on port 9090."
+else
+    echo "   -> HBase Thrift server is NOT running. Starting it..."
+    hbase-daemon.sh start thrift
+    sleep 3
+    if netstat -tuln 2>/dev/null | grep ":9090 " > /dev/null; then
+        echo "   -> Thrift server started successfully on port 9090."
+    else
+        echo "   [!] WARNING: Thrift server may not have started. HappyBase connections may fail."
+    fi
+fi
+
+# ------------------------------------------------------------------------------
 # 2. Function to create table if it doesn't exist
 # ------------------------------------------------------------------------------
 create_table_if_not_exists() {
