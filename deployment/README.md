@@ -45,12 +45,70 @@ ssh -i "<PATH\_TO\_PRIVATE\_KEY>" vagrant@localhost -p 2222
 
 ```
 
-## 4. Clone Github Repository
+## 4. Inside the VM:
 
-Inside the VM:
+### When shutting down
+
+When shutting down, do not force shutdown (power button icon in VirtualBox). Turn off, by sending shutdown sygnal to the VM (bolt icon in VirtualBox).
+
+### When resuming the VM
+
+Do not run the `initialize_project.sh` script again.
+
+Start services: `sudo /home/vagrant/scripts/bootstrap.sh`.
+
+### When setting up a new VM
 
 ```bash
 
 git clone https://github.com/Sebislaw/Crypto-Options-vs-Rates.git
 
+cd Crypto-Options-vs-Rates
+
+chmod +x console_scripts/initialize_project.sh
+
+sed -i 's/\r$//' console_scripts/*.sh
+
+console_scripts/initialize_project.sh
+
 ```
+
+### Running the system
+
+To start ingestion phase:
+
+```bash
+
+console_scripts/start_ingestion.sh
+
+```
+
+To stop ingestion phase:
+
+```bash
+
+console_scripts/stop_ingestion.sh
+
+```
+
+## 5. Data flow.
+
+### Ingestion:
+
+The python collectors save the output to hdfs in raw/ directory.
+
+NiFi fetches from raw/ directory and coverts all inputs to unifies parquet format, then saves in hdfs in cleansed/ directory. NiFi also streams data to three Kafka topics: `binance`, `polymarket_trade` and `polymarket_metadata`.
+
+To view each Kafka topic stream data:
+
+```bash
+/usr/local/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic binance --from-beginning
+
+/usr/local/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic polymarket_trade --from-beginning
+
+/usr/local/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic polymarket_metadata --from-beginning
+```
+
+### Speed:
+
+The first part of the speed layer is Kafka, which partly is implemented in the ingestion layer in `NiFI_Flow.xml`. Kafka serves as an ingestion phase component dedicated for the speed layer.

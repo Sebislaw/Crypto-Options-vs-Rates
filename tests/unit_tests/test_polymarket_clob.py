@@ -77,25 +77,24 @@ class TestWebSocketOrderBook(unittest.TestCase):
 
     @patch('ingestion_layer.polymarket.polymarket_clob.WebSocketApp')
     @patch('ingestion_layer.polymarket.polymarket_clob.current_quarter_timestamp_et')
-    @patch('builtins.print')
-    def test_on_message(self, mock_print, mock_timestamp, mock_ws_app):
-        """Test on_message callback."""
+    def test_on_message(self, mock_timestamp, mock_ws_app):
+        """Test on_message callback stores messages in the buffer."""
         mock_timestamp.return_value = 1234567890
-        
+
         ws_orderbook = WebSocketOrderBook(
             self.channel_type,
             self.url,
             self.data,
             self.message_callback
         )
-        
+
         mock_ws = Mock()
         test_message = '{"type": "test", "data": "value"}'
-        
+
         ws_orderbook.on_message(mock_ws, test_message)
-        
-        # Verify message was printed
-        mock_print.assert_called_once_with(test_message)
+
+        # Verify message was buffered
+        self.assertIn(test_message, ws_orderbook.buffer)
 
     @patch('ingestion_layer.polymarket.polymarket_clob.WebSocketApp')
     @patch('ingestion_layer.polymarket.polymarket_clob.current_quarter_timestamp_et')
