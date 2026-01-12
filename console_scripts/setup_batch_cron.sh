@@ -132,8 +132,19 @@ show_status() {
         CURRENT_HOUR=$(date +%H)
         CURRENT_MIN=$(date +%M)
         
-        # Calculate next run time (at next 6-hour mark)
-        NEXT_HOUR=$((($CURRENT_HOUR / 6 + 1) * 6))
+        # Calculate next run time (at next 6-hour mark: 0, 6, 12, 18)
+        # If we're past minute 0 of a scheduled hour, move to the next slot
+        CURRENT_SLOT=$((CURRENT_HOUR / 6))
+        CURRENT_SLOT_HOUR=$((CURRENT_SLOT * 6))
+        
+        if [ $CURRENT_HOUR -eq $CURRENT_SLOT_HOUR ] && [ $CURRENT_MIN -gt 0 ]; then
+            # We're past the current slot's start time, move to next slot
+            NEXT_HOUR=$(((CURRENT_SLOT + 1) * 6))
+        else
+            # We're before the next slot or exactly at :00
+            NEXT_HOUR=$(((CURRENT_SLOT + 1) * 6))
+        fi
+        
         if [ $NEXT_HOUR -ge 24 ]; then
             NEXT_HOUR=$((NEXT_HOUR - 24))
             NEXT_DAY="tomorrow"
