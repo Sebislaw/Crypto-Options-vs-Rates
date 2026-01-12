@@ -33,7 +33,7 @@ Output Metrics per 1-minute window:
             - avg_sentiment: Average buy sentiment (0-1)
             - ticks: Number of data points
     
-    Polymarket (per market):
+    Polymarket Order Books (per market):
         Real-Time Snapshots:
             - current_prob: Latest market probability
             - current_spread: Latest bid-ask spread
@@ -44,6 +44,10 @@ Output Metrics per 1-minute window:
             - max_prob: Highest probability in window
             - avg_imbalance: Average order book pressure
             - avg_spread: Average bid-ask spread
+            - num_updates: Number of order book updates
+    
+    Polymarket Trades (per market):
+        Aggregates:
             - total_shares_traded: Total volume traded
             - num_trades: Number of trades executed
 
@@ -197,32 +201,43 @@ binance_clean = raw_binance.selectExpr("CAST(value AS STRING) as json_string") \
 
 # === POLYMARKET STREAM ===
 # Transform raw prediction market data into structured metrics
-# Calculates order book imbalance to measure buying/selling pressure
-# Steps:
-#   1. Parse JSON messages using Polymarket schema
-#   2. Filter for order book events (which have bid/ask data)
-#   3. Extract best bid/ask prices and sizes
-#   4. Compute derived metrics (spread, mid-price, imbalance)
-poly_clean = raw_poly.selectExpr("CAST(value AS STRING) as json_string") \
+# Note: The polymarket_trade topic contains TWO event types:
+#   1. "book" events: Order book snapshots with bids/asks
+#   2. "last_trade_price" events: Trade executions with price/size
+# These must be processed separately to avoid null overwrites
+
+# Parse raw Kafka messages and extract common fields
+poly_parsed = raw_poly.selectExpr("CAST(value AS STRING) as json_string") \
     .select(from_json(col("json_string"), poly_schema).alias("data")) \
-    .filter((col("data.bids").isNotNull() | col("data.asks").isNotNull())) \
     .select(
         col("data.market").alias("market_id"),
         col("data.event_type"),
         (col("data.timestamp").cast("long") / 1000).cast("timestamp").alias("event_time"),
+        col("data.bids"),
+        col("data.asks"),
+        col("data.price"),
+        col("data.size")
+    )
+
+# STREAM 1: Order Book Events ("book")
+# Processes order book snapshots to calculate probability, spread, and imbalance
+poly_books = poly_parsed \
+    .filter(col("event_type") == "book") \
+    .select(
+        col("market_id"),
+        col("event_time"),
         
         # Order Book Price Levels:
         # best_bid: Highest price buyers are willing to pay (max probability)
         # best_ask: Lowest price sellers are willing to accept (min probability)
-        array_max(expr("transform(data.bids, x -> cast(x.price as double))")).alias("best_bid"),
-        array_min(expr("transform(data.asks, x -> cast(x.price as double))")).alias("best_ask"),
+        array_max(expr("transform(bids, x -> cast(x.price as double))")).alias("best_bid"),
+        array_min(expr("transform(asks, x -> cast(x.price as double))")).alias("best_ask"),
         
         # Order Book Depth (Liquidity):
         # Extract the size (quantity) available at the best price levels
         # Used to calculate order book imbalance (bid pressure vs ask pressure)
-        # Uses element_at with safe access - returns null if filter result is empty
-        expr("element_at(filter(data.bids, x -> x.price == array_max(transform(data.bids, y -> y.price))), 1).size").cast("double").alias("bid_depth"),
-        expr("element_at(filter(data.asks, x -> x.price == array_min(transform(data.asks, y -> y.price))), 1).size").cast("double").alias("ask_depth")
+        expr("element_at(filter(bids, x -> x.price == array_max(transform(bids, y -> y.price))), 1).size").cast("double").alias("bid_depth"),
+        expr("element_at(filter(asks, x -> x.price == array_min(transform(asks, y -> y.price))), 1).size").cast("double").alias("ask_depth")
     ) \
     .withColumn("spread", abs(col("best_ask") - col("best_bid"))) \
     .withColumn("mid_price_prob", (col("best_bid") + col("best_ask")) / 2) \
@@ -236,6 +251,17 @@ poly_clean = raw_poly.selectExpr("CAST(value AS STRING) as json_string") \
                 # Returns null if total depth is zero to avoid division by zero
                 when((col("bid_depth") + col("ask_depth")) > 0,
                      (col("bid_depth") - col("ask_depth")) / (col("bid_depth") + col("ask_depth")))
+    )
+
+# STREAM 2: Trade Events ("last_trade_price")
+# Processes trade executions to calculate volume and trade counts
+poly_trades = poly_parsed \
+    .filter(col("event_type") == "last_trade_price") \
+    .select(
+        col("market_id"),
+        col("event_time"),
+        col("price").cast("double").alias("trade_price"),
+        col("size").cast("double").alias("trade_size")
     )
 
 # --- 5. WINDOWED AGGREGATIONS ---
@@ -263,9 +289,12 @@ binance_agg = binance_clean \
     )
 
 # POLYMARKET AGGREGATIONS
+# Two separate aggregations for book events and trade events
+# This prevents null overwrites that occur when processing mixed event types
+
+# Aggregate 1: Order Book Metrics (from "book" events)
 # Calculates market probability, liquidity metrics over order book snapshots
-# Note: Processes only order book events (not individual trades)
-poly_agg = poly_clean \
+poly_books_agg = poly_books \
     .withWatermark("event_time", "2 minutes") \
     .groupBy(window(col("event_time"), "1 minute"), col("market_id")) \
     .agg(
@@ -285,15 +314,31 @@ poly_agg = poly_clean \
         count("*").alias("num_updates")                   # Number of order book updates
     )
 
+# Aggregate 2: Trade Metrics (from "last_trade_price" events)
+# Calculates trading volume and trade counts
+poly_trades_agg = poly_trades \
+    .withWatermark("event_time", "2 minutes") \
+    .groupBy(window(col("event_time"), "1 minute"), col("market_id")) \
+    .agg(
+        sum("trade_size").alias("total_shares_traded"),   # Total trading volume
+        count("*").alias("num_trades")                    # Number of trades executed
+    )
+
 # --- 6. OUTPUT SINKS ---
 # Write aggregated results to console for real-time monitoring
 # Note: Console sink doesn't require checkpoint locations
 # TODO: Add HBase or HDFS sink for persistence when VM HDFS configuration is ready
 #
+# Three separate output streams:
+#   1. Binance: Cryptocurrency price/volume metrics
+#   2. Polymarket Books: Order book probability/spread/imbalance metrics
+#   3. Polymarket Trades: Trade volume and count metrics
+#
 # Output Mode: "update" - Only changed aggregations are output
 # Trigger: Process every 5 seconds for near real-time results
 
 print(">>> Starting Advanced Stream Processing...")
+print(">>> Three output streams: Binance, Polymarket Books, Polymarket Trades")
 
 # Start Binance aggregation output stream
 query_binance = binance_agg.writeStream \
@@ -303,8 +348,16 @@ query_binance = binance_agg.writeStream \
     .trigger(processingTime="5 seconds") \
     .start()
 
-# Start Polymarket aggregation output stream
-query_poly = poly_agg.writeStream \
+# Start Polymarket Order Book aggregation output stream
+query_poly_books = poly_books_agg.writeStream \
+    .outputMode("update") \
+    .format("console") \
+    .option("truncate", "false") \
+    .trigger(processingTime="5 seconds") \
+    .start()
+
+# Start Polymarket Trades aggregation output stream
+query_poly_trades = poly_trades_agg.writeStream \
     .outputMode("update") \
     .format("console") \
     .option("truncate", "false") \

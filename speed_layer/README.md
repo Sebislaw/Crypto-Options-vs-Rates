@@ -110,9 +110,10 @@ Binance API          Polymarket WebSocket
 
 Spark Structured Streaming produces aggregated metrics in **1-minute tumbling windows**. Each window output contains both real-time snapshots (latest values) and statistical aggregates.
 
-Two independent streams are processed and output separately:
+Three independent streams are processed and output separately:
 1. **Binance Stream** - Cryptocurrency price and volume data
-2. **Polymarket Stream** - Prediction market order book data
+2. **Polymarket Order Book Stream** - Prediction market order book probability, spread, and imbalance metrics
+3. **Polymarket Trade Stream** - Prediction market trade volume and trade count metrics
 
 ---
 
@@ -140,12 +141,14 @@ Output is grouped by `window` (1-minute interval) and `symbol` (trading pair).
 
 **Example Output:**
 ```
-+-------------------------------------------+--------+---------------+-------------------+-----------+-----------+-----------+------------+-------------------+---------------+------+
-|window                                     |symbol  |current_price  |current_sentiment  |avg_price  |min_price  |max_price  |volatility  |total_usdt_volume  |avg_sentiment  |ticks |
-+-------------------------------------------+--------+---------------+-------------------+-----------+-----------+-----------+------------+-------------------+---------------+------+
-|{2026-01-12 10:15:00, 2026-01-12 10:16:00}|SOLUSDT |189.45         |0.523              |189.32     |189.10     |189.58     |0.156       |125840.32          |0.518          |12    |
-|{2026-01-12 10:15:00, 2026-01-12 10:16:00}|BTCUSDT |92345.67       |0.492              |92301.23   |92250.00   |92400.50   |45.23       |2458923.45         |0.501          |15    |
-+-------------------------------------------+--------+---------------+-------------------+-----------+-----------+-----------+------------+-------------------+---------------+------+
++------------------------------------------+-------+-------------+-------------------+------------------+---------+---------+--------------------+------------------+------------------+-----+
+|window                                    |symbol |current_price|current_sentiment  |avg_price         |min_price|max_price|volatility          |total_usdt_volume |avg_sentiment     |ticks|
++------------------------------------------+-------+-------------+-------------------+------------------+---------+---------+--------------------+------------------+------------------+-----+
+|{2026-01-12 17:56:00, 2026-01-12 17:57:00}|XRPUSDT|2.0674       |0.3964722445762248 |2.06803023255814  |2.0674   |2.0684   |2.559156145524768E-4|164644.33687      |0.3343163438163003|43   |
+|{2026-01-12 17:56:00, 2026-01-12 17:57:00}|ETHUSDT|3105.27      |0.7604413477403559 |3105.224634146342 |3105.0   |3105.54  |0.2222846998893715  |3022684.4816070003|0.6659022586058382|41   |
+|{2026-01-12 17:56:00, 2026-01-12 17:57:00}|BTCUSDT|91523.05     |0.6481412717972493 |91520.85177777776 |91507.26 |91525.0  |6.47125261475951    |9261912.0375169   |0.7879263265502344|45   |
+|{2026-01-12 17:56:00, 2026-01-12 17:57:00}|SOLUSDT|141.9        |0.47698505920185846|141.95878048780486|141.9    |142.0    |0.028739791400705258|1562800.2754400002|0.6333400002353181|41   |
++------------------------------------------+-------+-------------+-------------------+------------------+---------+---------+--------------------+------------------+------------------+-----+
 ```
 
 **Interpretation:**
@@ -154,13 +157,12 @@ Output is grouped by `window` (1-minute interval) and `symbol` (trading pair).
 - **Volatility:** Higher stddev indicates more price swings
 - **Sentiment > 0.5:** More aggressive buying than selling
 
-### Polymarket Output Schema
+### Polymarket Order Book Output Schema
 
-**Source:** Kafka topic `polymarket_trade` → Ingestion Layer WebSocket Collector → NiFi
+**Source:** Kafka topic `polymarket_trade` → Ingestion Layer WebSocket Collector  
+**Event Type Filtered:** `"book"` events (contain bid/ask order book snapshots)
 
 Output is grouped by `window` (1-minute interval) and `market_id` (prediction market identifier).
-
-**Note:** Only **order book events** are processed (events with bid/ask arrays). Trade execution events are filtered out because they don't contain order book data needed for these metrics. The stream provides order book liquidity and probability snapshots only.
 
 | Column | Type | Description | Calculation | Category |
 |--------|------|-------------|-------------|----------|
@@ -176,16 +178,15 @@ Output is grouped by `window` (1-minute interval) and `market_id` (prediction ma
 | `max_prob` | double | Highest probability in window | `max(mid_price_prob)` | Aggregate |
 | `avg_imbalance` | double | Average order book pressure | `avg(book_imbalance)` over window | Aggregate |
 | `avg_spread` | double | Average bid-ask spread | `avg(spread)` over window | Aggregate |
-| `num_updates` | long | Number of order book snapshots received | `count(*)` of order book events | Aggregate |
+| `num_updates` | long | Number of order book snapshots | `count(*)` of order book events | Aggregate |
 
 **Example Output:**
 ```
-+-------------------------------------------+----------------------------------+--------------+----------------+-------------------+----------+----------+----------+---------------+------------+-----------+
-|window                                     |market_id                         |current_prob  |current_spread  |current_imbalance  |avg_prob  |min_prob  |max_prob  |avg_imbalance  |avg_spread  |num_updates|
-+-------------------------------------------+----------------------------------+--------------+----------------+-------------------+----------+----------+----------+---------------+------------+-----------+
-|{2026-01-12 17:05:00, 2026-01-12 17:06:00}|0xefe78759ce752c475697df337...   |0.835         |0.010           |-0.797             |0.840     |0.835     |0.850     |-0.632         |0.016       |5          |
-|{2026-01-12 17:05:00, 2026-01-12 17:06:00}|0x82e4d2c3a7f8b1c9e5d3f9a2...   |0.512         |0.008           |-0.089             |0.518     |0.495     |0.535     |-0.045         |0.010       |8          |
-+-------------------------------------------+----------------------------------+--------------+----------------+-------------------+----------+----------+----------+---------------+------------+-----------+
++------------------------------------------+------------------------------------------------------------------+------------+--------------------+-------------------+--------+--------+--------+-------------------+--------------------+-----------+
+|window                                    |market_id                                                       |current_prob|current_spread      |current_imbalance  |avg_prob|min_prob|max_prob|avg_imbalance      |avg_spread          |num_updates|
++------------------------------------------+------------------------------------------------------------------+------------+--------------------+-------------------+--------+--------+--------+-------------------+--------------------+-----------+
+|{2026-01-12 17:56:00, 2026-01-12 17:57:00}|0x119e6c6dc5ddb9365b2f27703e25dea35aaf528d98729823634b3d779f899504|0.965       |0.010000000000000009|0.44159411518227104|0.96875 |0.965   |0.975   |-0.4142490035599151|0.012500000000000011|4          |
++------------------------------------------+------------------------------------------------------------------+------------+--------------------+-------------------+--------+--------+--------+-------------------+--------------------+-----------+
 ```
 
 **Interpretation:**
@@ -198,9 +199,38 @@ Output is grouped by `window` (1-minute interval) and `market_id` (prediction ma
 - **Spread:** Lower = Better liquidity
 - **Current vs Avg:** Indicates recent momentum shift
 
+### Polymarket Trade Output Schema
+
+**Source:** Kafka topic `polymarket_trade` → Ingestion Layer WebSocket Collector  
+**Event Type Filtered:** `"last_trade_price"` events (contain trade executions with price/size)
+
+Output is grouped by `window` (1-minute interval) and `market_id` (prediction market identifier).
+
+| Column | Type | Description | Calculation | Category |
+|--------|------|-------------|-------------|----------|
+| `window` | struct | Time window: `{start: timestamp, end: timestamp}` | 1-minute tumbling window | Window |
+| `market_id` | string | Unique market identifier | From `market` field in Kafka message | Grouping |
+| **Aggregates** | | **Statistical measures over window** | | |
+| `total_shares_traded` | double | Total volume of shares traded | `sum(trade_size)` over all trade events | Aggregate |
+| `num_trades` | long | Number of trades executed | `count(*)` of trade events | Aggregate |
+
+**Example Output:**
+```
++------------------------------------------+------------------------------------------------------------------+-------------------+----------+
+|window                                    |market_id                                                       |total_shares_traded|num_trades|
++------------------------------------------+------------------------------------------------------------------+-------------------+----------+
+|{2026-01-12 17:57:00, 2026-01-12 17:58:00}|0x119e6c6dc5ddb9365b2f27703e25dea35aaf528d98729823634b3d779f899504|204.38             |4         |
++------------------------------------------+------------------------------------------------------------------+-------------------+----------+
+```
+
+**Interpretation:**
+- **Trading Volume:** Total shares exchanged (higher = more active market)
+- **Trade Count:** Number of discrete trade executions (indicates market participation)
+- **Volume per Trade:** `total_shares_traded / num_trades` = average trade size
+
 ### Window Structure
 
-Both outputs use Spark's window aggregation structure:
+All outputs use Spark's window aggregation structure:
 
 ```json
 {
@@ -355,22 +385,25 @@ buy_sentiment = taker_buy_quote / quote_asset_volume
 
 ### Polymarket Metrics (Prediction Markets)
 
+The Polymarket stream is split into two separate processing paths based on event type:
+
+#### Order Book Events (event_type == "book")
+
 **Input Schema:**
 - `market_id`: Unique market identifier
 - `timestamp`: Event timestamp (milliseconds)
 - `bids`: Array of bid orders [{price, size}]
 - `asks`: Array of ask orders [{price, size}]
-- Note: Trade events (with `price` and `size` fields) are filtered out; only order book snapshots are processed
 
 **Computed Metrics (1-minute windows):**
 | Metric | Description | Use Case |
 |--------|-------------|----------|
 | `current_prob` | Latest market probability (mid-price) | Current market expectation |
 | `avg_prob` | Average probability over window | Market expectation trend |
-| `min_prob`, `max_prob` | Probability range | Market uncertainty indicator |
+| `min_prob`, `max_prob` | Probability range | Market uncertainty measure |
 | `current_imbalance` | Latest order book imbalance ratio | Current buying/selling pressure |
 | `avg_imbalance` | Average order book imbalance | Overall pressure during window |
-| `current_spread` | Latest bid-ask spread | Current liquidity |
+| `current_spread` | Latest bid-ask spread | Current liquidity indicator |
 | `avg_spread` | Average bid-ask spread | Liquidity trend |
 | `num_updates` | Number of order book snapshots | Activity frequency |
 
@@ -378,9 +411,23 @@ buy_sentiment = taker_buy_quote / quote_asset_volume
 ```python
 imbalance = (bid_depth - ask_depth) / (bid_depth + ask_depth)
 ```
-- **+1** = All liquidity on bid side (strong buy pressure)
-- **-1** = All liquidity on ask side (strong sell pressure)
+- **+1** = All liquidity on bid side (strong buying pressure)
+- **-1** = All liquidity on ask side (strong selling pressure)
 - **0** = Balanced order book
+
+#### Trade Events (event_type == "last_trade_price")
+
+**Input Schema:**
+- `market_id`: Unique market identifier
+- `timestamp`: Event timestamp (milliseconds)
+- `price`: Trade execution price (probability 0-1)
+- `size`: Trade execution size (shares)
+
+**Computed Metrics (1-minute windows):**
+| Metric | Description | Use Case |
+|--------|-------------|----------|
+| `total_shares_traded` | Sum of all trade sizes | Trading activity level |
+| `num_trades` | Number of discrete trades | Market participation |
 
 ---
 
