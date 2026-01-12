@@ -100,6 +100,8 @@ show_status() {
         # Show schedule in human-readable format
         echo "Schedule: Every 6 hours (at 00:00, 06:00, 12:00, 18:00)"
         echo ""
+        echo "Current Time: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo ""
         
         # Show last execution time from log
         if [ -f "$LOG_DIR/cron_execution.log" ]; then
