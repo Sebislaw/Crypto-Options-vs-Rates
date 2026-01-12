@@ -106,6 +106,115 @@ Binance API          Polymarket WebSocket
 
 ---
 
+## Output Schema
+
+Spark Structured Streaming produces aggregated metrics in **1-minute tumbling windows**. Each window output contains both real-time snapshots (latest values) and statistical aggregates.
+
+Two independent streams are processed and output separately:
+1. **Binance Stream** - Cryptocurrency price and volume data
+2. **Polymarket Stream** - Prediction market order book data
+
+---
+
+### Binance Output Schema
+
+**Source:** Kafka topic `binance` → Ingestion Layer Collectors → NiFi
+
+Output is grouped by `window` (1-minute interval) and `symbol` (trading pair).
+
+| Column | Type | Description | Calculation | Category |
+|--------|------|-------------|-------------|----------|
+| `window` | struct | Time window: `{start: timestamp, end: timestamp}` | 1-minute tumbling window | Window |
+| `symbol` | string | Trading pair (e.g., "SOLUSDT", "BTCUSDT") | From `symbol` field in Kafka message | Grouping |
+| **Snapshots** | | **Latest values at end of window** | | |
+| `current_price` | double | Most recent price in the window | `last(close_price)` from latest kline | Snapshot |
+| `current_sentiment` | double | Latest buy sentiment ratio (0-1) | `last(taker_buy_quote / quote_asset_volume)` | Snapshot |
+| **Aggregates** | | **Statistical measures over window** | | |
+| `avg_price` | double | Mean price during the window | `avg(close_price)` over all klines | Aggregate |
+| `min_price` | double | Lowest price recorded in window | `min(close_price)` | Aggregate |
+| `max_price` | double | Highest price recorded in window | `max(close_price)` | Aggregate |
+| `volatility` | double | Standard deviation of price | `stddev(close_price)` | Aggregate |
+| `total_usdt_volume` | double | Total USDT volume traded | `sum(quote_asset_volume)` from all klines | Aggregate |
+| `avg_sentiment` | double | Average buy sentiment (0-1) | `avg(taker_buy_quote / quote_asset_volume)` | Aggregate |
+| `ticks` | long | Number of updates received | `count(*)` of klines processed | Aggregate |
+
+**Example Output:**
+```
++-------------------------------------------+--------+---------------+-------------------+-----------+-----------+-----------+------------+-------------------+---------------+------+
+|window                                     |symbol  |current_price  |current_sentiment  |avg_price  |min_price  |max_price  |volatility  |total_usdt_volume  |avg_sentiment  |ticks |
++-------------------------------------------+--------+---------------+-------------------+-----------+-----------+-----------+------------+-------------------+---------------+------+
+|{2026-01-12 10:15:00, 2026-01-12 10:16:00}|SOLUSDT |189.45         |0.523              |189.32     |189.10     |189.58     |0.156       |125840.32          |0.518          |12    |
+|{2026-01-12 10:15:00, 2026-01-12 10:16:00}|BTCUSDT |92345.67       |0.492              |92301.23   |92250.00   |92400.50   |45.23       |2458923.45         |0.501          |15    |
++-------------------------------------------+--------+---------------+-------------------+-----------+-----------+-----------+------------+-------------------+---------------+------+
+```
+
+**Interpretation:**
+- **Price range:** Shows trading range within the minute (`max_price - min_price`)
+- **Current vs Avg:** Indicates momentum direction (current > avg = upward momentum)
+- **Volatility:** Higher stddev indicates more price swings
+- **Sentiment > 0.5:** More aggressive buying than selling
+
+### Polymarket Output Schema
+
+**Source:** Kafka topic `polymarket_trade` → Ingestion Layer WebSocket Collector → NiFi
+
+Output is grouped by `window` (1-minute interval) and `market_id` (prediction market identifier).
+
+**Note:** Only order book events are processed (events with bid/ask arrays). Trade execution events are filtered out because they don't contain order book data needed for these metrics.
+
+| Column | Type | Description | Calculation | Category |
+|--------|------|-------------|-------------|----------|
+| `window` | struct | Time window: `{start: timestamp, end: timestamp}` | 1-minute tumbling window | Window |
+| `market_id` | string | Unique market identifier | From `market` field in Kafka message | Grouping |
+| **Snapshots** | | **Latest values at end of window** | | |
+| `current_prob` | double | Most recent market probability (0-1) | `last((best_bid + best_ask) / 2)` from latest order book | Snapshot |
+| `current_spread` | double | Latest bid-ask spread | `last(abs(best_ask - best_bid))` | Snapshot |
+| `current_imbalance` | double | Latest order book imbalance (-1 to +1) | `last((bid_depth - ask_depth) / (bid_depth + ask_depth))` | Snapshot |
+| **Aggregates** | | **Statistical measures over window** | | |
+| `avg_prob` | double | Average probability during window | `avg(mid_price_prob)` over all order book snapshots | Aggregate |
+| `min_prob` | double | Lowest probability in window | `min(mid_price_prob)` | Aggregate |
+| `max_prob` | double | Highest probability in window | `max(mid_price_prob)` | Aggregate |
+| `avg_imbalance` | double | Average order book pressure | `avg(book_imbalance)` over window | Aggregate |
+| `avg_spread` | double | Average bid-ask spread | `avg(spread)` over window | Aggregate |
+| `num_updates` | long | Number of order book updates | `count(*)` of order book snapshots | Aggregate |
+
+**Example Output:**
+```
++-------------------------------------------+------------------+--------------+----------------+-------------------+----------+----------+----------+---------------+------------+---------------------+------------+
+|window                                     |market_id         |current_prob  |current_spread  |current_imbalance  |avg_prob  |min_prob  |max_prob  |avg_imbalance  |avg_spread  |total_shares_traded  |num_trades  |
++-------------------------------------------+------------------+--------------+----------------+-------------------+----------+----------+----------+---------------+------------+---------------------+------------+
+|{2026-01-12 10:15:00, 2026-01-12 10:16:00}|0x71f...abc123    |0.645         |0.012           |0.234              |0.638     |0.620     |0.652     |0.189          |0.015       |15420.50             |23          |
+|{2026-01-12 10:15:00, 2026-01-12 10:16:00}|0x82e...def456    |0.512         |0.008           |-0.089             |0.518     |0.495     |0.535     |-0.045         |0.010       |8934.20              |12          |
++-------------------------------------------+------------------+--------------+----------------+-------------------+----------+----------+----------+---------------+------------+---------------------+------------+
+```
+
+**Interpretation:**
+- **Probability range:** Shows betting volatility (`max_prob - min_prob`)
+  - Large range = Market uncertainty or flash crash/pump
+  - Small range = Stable market sentiment
+- **Imbalance:** 
+  - Positive = More bids than asks (bullish pressure)
+  - Negative = More asks than bids (bearish pressure)
+- **Spread:** Lower = Better liquidity
+- **Current vs Avg:** Indicates recent momentum shift
+
+### Window Structure
+
+Both outputs use Spark's window aggregation structure:
+
+```json
+{
+  "start": "2026-01-12T10:15:00.000Z",
+  "end": "2026-01-12T10:16:00.000Z"
+}
+```
+
+- **Tumbling windows:** Non-overlapping 1-minute intervals
+- **Watermark:** 2-minute tolerance for late-arriving data
+- **Update mode:** Only modified windows are output (efficient for real-time)
+
+---
+
 ## Quick Start
 
 ### Prerequisites

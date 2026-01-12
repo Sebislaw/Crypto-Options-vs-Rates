@@ -47,9 +47,11 @@ ssh -i "<PATH\_TO\_PRIVATE\_KEY>" vagrant@localhost -p 2222
 
 ## 4. Inside the VM:
 
-### When shutting down
+### Shutting down
 
 When shutting down, do not force shutdown (power button icon in VirtualBox). Turn off, by sending shutdown sygnal to the VM (bolt icon in VirtualBox).
+
+The preferred method of shutting down is using the VirtualBox `Save the machine state` option. This saves the current state, without turning anything off.
 
 You can also shutdown via:
 
