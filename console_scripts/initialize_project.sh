@@ -93,6 +93,34 @@ else
     echo "       You may need to deploy the template manually."
 fi
 
+# 9. Setup Batch Layer Cron Job
+echo "=================================================="
+echo "   Setting up Batch Analytics Cron Job"
+echo "=================================================="
+BATCH_CRON_SCRIPT="$PROJECT_ROOT/console_scripts/setup_batch_cron.sh"
+
+if [ -f "$BATCH_CRON_SCRIPT" ]; then
+    echo "   -> Installing cron job for automated batch processing..."
+    bash "$BATCH_CRON_SCRIPT" install
+    echo ""
+    echo "   Batch analytics will run every 6 hours automatically."
+    echo "   Use 'bash $BATCH_CRON_SCRIPT status' to check cron status."
+else
+    echo "   [!] WARNING: Batch cron setup script not found at $BATCH_CRON_SCRIPT"
+    echo "       You will need to run batch jobs manually."
+fi
+
+
+
 echo "=================================================="
 echo "   Initialization Complete!"
+echo "=================================================="
+echo ""
+echo "Available Commands:"
+echo "  - Start ingestion:  bash console_scripts/start_ingestion.sh"
+echo "  - Stop ingestion:   bash console_scripts/stop_ingestion.sh"
+echo "  - Batch cron status: bash console_scripts/setup_batch_cron.sh status"
+echo "  - View batch logs:   bash console_scripts/setup_batch_cron.sh logs"
+echo "  - Run batch manually: bash batch_layer/run_batch_analytics.sh"
+echo ""
 echo "=================================================="
