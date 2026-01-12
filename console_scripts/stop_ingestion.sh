@@ -37,6 +37,13 @@ kill_process() {
 kill_process "binance"
 kill_process "polymarket_clob"
 
+# 2. Stop Spark Streaming
+kill_process "spark_streaming"
+
+# 3. Force kill any lingering Spark processes (Safety net)
+echo "Ensuring all Spark Submit processes are dead..."
+pkill -f "spark_streaming.py" 2>/dev/null
+
 echo "=================================================="
 echo "   Collectors Stopped"
 echo "=================================================="

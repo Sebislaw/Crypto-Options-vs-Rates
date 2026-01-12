@@ -78,7 +78,7 @@ else
     echo "       Kafka may not be initialized."
 fi
 
-# 8. Deploy NiFi Flow (NEW SECTION)
+# 8. Deploy NiFi Flow
 echo "=================================================="
 echo "   Deploying NiFi Configuration"
 echo "=================================================="

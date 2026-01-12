@@ -47,15 +47,34 @@ ssh -i "<PATH\_TO\_PRIVATE\_KEY>" vagrant@localhost -p 2222
 
 ## 4. Inside the VM:
 
-### When shutting down
+### Shutting down
 
 When shutting down, do not force shutdown (power button icon in VirtualBox). Turn off, by sending shutdown sygnal to the VM (bolt icon in VirtualBox).
 
+The preferred method of shutting down is using the VirtualBox `Save the machine state` option. This saves the current state, without turning anything off.
+
+You can also shutdown via:
+
+```bash
+
+sudo shutdown -h now
+
+```
+
+Make sure the pipeline is stopped via `console_scripts/stop_ingestion.sh` before shutting down.
+
+
 ### When resuming the VM
 
-Do not run the `initialize_project.sh` script again.
+For resuming the VM without errors, there are 2 approaches, with the first one being preferred:
 
-Start services: `sudo /home/vagrant/scripts/bootstrap.sh`.
+1. Use the VirtualBox `Save the machine state` option. This saves the current state, without turning anything off. If the system worked before, chances are, now it will too.
+
+2. Do a proper shutdown. This closes some of the services and causes problems with zombie processes in NiFi. To make the system work again, you have to manually execute the steps below. Starting the NiFi again will cause it to fetch files from hdfs again, which can take some time. The steps to take:
+
+- Manually delete all elements from `http://localhost:9443/nifi/`.
+
+- Run `initialize_project.sh`.
 
 ### When setting up a new VM
 
@@ -93,7 +112,7 @@ console_scripts/stop_ingestion.sh
 
 ## 5. Data flow.
 
-### Ingestion:
+### Ingestion layer:
 
 The python collectors save the output to hdfs in raw/ directory.
 
@@ -109,6 +128,16 @@ To view each Kafka topic stream data:
 /usr/local/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic polymarket_metadata --from-beginning
 ```
 
-### Speed:
+### Speed layer:
 
 The first part of the speed layer is Kafka, which partly is implemented in the ingestion layer in `NiFI_Flow.xml`. Kafka serves as an ingestion phase component dedicated for the speed layer.
+
+Three Kafka topics are created: `binance`, `polymarket_trade` and `polymarket_metadata`. The first 2 are streamed into Spark in the speed layer. The metadata topic is currently not used, as saving historical data (15 minute markets, so 15 minutes at least) in the speed layer is not a functional choice beacuse of the virtual machines we use for development. The metadata from batch layer will be used in the serving layer to correctly map the data in from the speed layer.
+
+Spark implementation for the speed layer is located in `speed_layer/spark` directory. Script `console_scripts/initialize_project.sh` sets up the spark job and the data from spark is saved directly in the HBASE-TODO (currently not saved to HBASE).
+
+To see spark batches: 
+
+```bash
+tail -f ~/Crypto-Options-vs-Rates/logs/spark_speed_layer.log
+```
