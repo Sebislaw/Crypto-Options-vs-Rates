@@ -1,6 +1,6 @@
 # Batch Layer - Quick Start Guide
 
-This is a simplified guide to get your batch layer running quickly.
+This is a simplified guide to get the batch layer running quickly.
 
 ---
 
@@ -216,7 +216,3 @@ batch_layer/
 1. Check logs: `ls -lh ~/Crypto-Options-vs-Rates/logs/`
 2. View detailed README: `cat batch_layer/README.md`
 3. Verify data flow: `hdfs dfs -ls -R /user/vagrant/cleansed/`
-
----
-
-**Good luck with your implementation!** 🚀
