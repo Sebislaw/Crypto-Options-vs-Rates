@@ -11,29 +11,50 @@ Key Features:
     - Applies schema validation and data transformations
     - Calculates market sentiment and order book imbalance metrics
     - Performs windowed aggregations (1-minute tumbling windows)
-    - Outputs results to console (can be modified for HBase/HDFS storage)
+    - Outputs both real-time snapshots and aggregate statistics
+    - Results written to console (can be extended to HBase/HDFS)
 
 Data Sources:
     - binance: Real-time cryptocurrency prices, volumes, and trading activity
     - polymarket_trade: Prediction market trades and order book snapshots
 
-Output Metrics:
-    Binance:
-        - Average price, volatility (stddev), total USDT volume
-        - Buy sentiment ratio (taker buy volume / total volume)
+Output Metrics per 1-minute window:
     
-    Polymarket:
-        - Average probability (mid-price), order book imbalance
-        - Average spread, total shares traded, number of trades
+    Binance (per symbol):
+        Real-Time Snapshots:
+            - current_price: Latest price in the window
+            - current_sentiment: Latest buy sentiment ratio
+        Aggregates:
+            - avg_price: Mean price over window
+            - min_price: Lowest price in window
+            - max_price: Highest price in window
+            - volatility: Standard deviation of price
+            - total_usdt_volume: Total USDT volume traded
+            - avg_sentiment: Average buy sentiment (0-1)
+            - ticks: Number of data points
+    
+    Polymarket (per market):
+        Real-Time Snapshots:
+            - current_prob: Latest market probability
+            - current_spread: Latest bid-ask spread
+            - current_imbalance: Latest order book imbalance
+        Aggregates:
+            - avg_prob: Average probability over window
+            - min_prob: Lowest probability in window
+            - max_prob: Highest probability in window
+            - avg_imbalance: Average order book pressure
+            - avg_spread: Average bid-ask spread
+            - total_shares_traded: Total volume traded
+            - num_trades: Number of trades executed
 
 Author: Speed Layer Team
-Last Modified: 2026-01-11
+Last Modified: 2026-01-12
 """
 
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import (
     from_json, col, expr, array_max, array_min, 
-    explode, window, avg, sum, count, stddev, abs, when
+    explode, window, avg, sum, count, stddev, abs, when, last, max, min
 )
 from pyspark.sql.types import (
     StructType, StructField, StringType, DoubleType, LongType, ArrayType
@@ -179,10 +200,12 @@ binance_clean = raw_binance.selectExpr("CAST(value AS STRING) as json_string") \
 # Calculates order book imbalance to measure buying/selling pressure
 # Steps:
 #   1. Parse JSON messages using Polymarket schema
-#   2. Extract best bid/ask prices and sizes
-#   3. Compute derived metrics (spread, mid-price, imbalance)
+#   2. Filter for order book events (which have bid/ask data)
+#   3. Extract best bid/ask prices and sizes
+#   4. Compute derived metrics (spread, mid-price, imbalance)
 poly_clean = raw_poly.selectExpr("CAST(value AS STRING) as json_string") \
     .select(from_json(col("json_string"), poly_schema).alias("data")) \
+    .filter((col("data.bids").isNotNull() | col("data.asks").isNotNull())) \
     .select(
         col("data.market").alias("market_id"),
         col("data.event_type"),
@@ -199,11 +222,7 @@ poly_clean = raw_poly.selectExpr("CAST(value AS STRING) as json_string") \
         # Used to calculate order book imbalance (bid pressure vs ask pressure)
         # Uses element_at with safe access - returns null if filter result is empty
         expr("element_at(filter(data.bids, x -> x.price == array_max(transform(data.bids, y -> y.price))), 1).size").cast("double").alias("bid_depth"),
-        expr("element_at(filter(data.asks, x -> x.price == array_min(transform(data.asks, y -> y.price))), 1).size").cast("double").alias("ask_depth"),
-        
-        # Trade Execution Data:
-        col("data.size").cast("double").alias("trade_size"),
-        col("data.price").cast("double").alias("trade_price")
+        expr("element_at(filter(data.asks, x -> x.price == array_min(transform(data.asks, y -> y.price))), 1).size").cast("double").alias("ask_depth")
     ) \
     .withColumn("spread", abs(col("best_ask") - col("best_bid"))) \
     .withColumn("mid_price_prob", (col("best_bid") + col("best_ask")) / 2) \
@@ -229,7 +248,14 @@ binance_agg = binance_clean \
     .withWatermark("event_time", "2 minutes") \
     .groupBy(window(col("event_time"), "1 minute"), col("symbol")) \
     .agg(
+        # --- Real-Time Snapshots (The "Now" State) ---
+        last("price").alias("current_price"),
+        last("buy_sentiment").alias("current_sentiment"),
+        
+        # --- Aggregates (The "Trend" State) ---
         avg("price").alias("avg_price"),                  # Mean price over window
+        min("price").alias("min_price"),                  # Lowest price in window
+        max("price").alias("max_price"),                  # Highest price in window
         stddev("price").alias("volatility"),             # Price volatility (std dev)
         sum("usdt_volume").alias("total_usdt_volume"),   # Total USDT traded
         avg("buy_sentiment").alias("avg_sentiment"),     # Average buying pressure
@@ -237,16 +263,26 @@ binance_agg = binance_clean \
     )
 
 # POLYMARKET AGGREGATIONS
-# Calculates market probability, liquidity metrics, and trading activity
+# Calculates market probability, liquidity metrics over order book snapshots
+# Note: Processes only order book events (not individual trades)
 poly_agg = poly_clean \
     .withWatermark("event_time", "2 minutes") \
     .groupBy(window(col("event_time"), "1 minute"), col("market_id")) \
     .agg(
+        # --- Real-Time Snapshots (The "Now" State) ---
+        # Latest values from the order book at end of window
+        last("mid_price_prob").alias("current_prob"),
+        last("spread").alias("current_spread"),
+        last("book_imbalance").alias("current_imbalance"),
+        
+        # --- Aggregates (The "Trend" State) ---
+        # Statistical measures over all order book snapshots in the window
         avg("mid_price_prob").alias("avg_prob"),          # Average market probability
+        min("mid_price_prob").alias("min_prob"),          # Lowest probability in window
+        max("mid_price_prob").alias("max_prob"),          # Highest probability in window
         avg("book_imbalance").alias("avg_imbalance"),     # Average order book pressure
         avg("spread").alias("avg_spread"),                # Average bid-ask spread
-        sum("trade_size").alias("total_shares_traded"),   # Total trading volume
-        count("trade_price").alias("num_trades")          # Number of trades executed
+        count("*").alias("num_updates")                   # Number of order book updates
     )
 
 # --- 6. OUTPUT SINKS ---
