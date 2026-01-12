@@ -52,7 +52,7 @@ install_cron() {
     # Add new cron job
     (crontab -l 2>/dev/null; echo "") | crontab -
     (crontab -l 2>/dev/null; echo "$CRON_MARKER") | crontab -
-    (crontab -l 2>/dev/null; echo "$CRON_SCHEDULE $BATCH_SCRIPT >> $LOG_DIR/cron_execution.log 2>&1") | crontab -
+    (crontab -l 2>/dev/null; echo "$CRON_SCHEDULE bash $BATCH_SCRIPT >> $LOG_DIR/cron_execution.log 2>&1") | crontab -
     
     echo ""
     echo "✓ Cron job installed successfully!"
