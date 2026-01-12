@@ -122,6 +122,7 @@ if [ -f "$HBASE_SETUP_SCRIPT" ]; then
 else
     echo "   [!] WARNING: HBase setup script not found at $HBASE_SETUP_SCRIPT"
     echo "       HBase tables may not be initialized."
+fi
 
 
 
