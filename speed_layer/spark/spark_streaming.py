@@ -66,9 +66,18 @@ from pyspark.sql.types import (
 
 # --- 1. CONFIGURATION ---
 # Kafka broker address for stream ingestion
-# HDFS checkpoint location for fault-tolerant state management
 KAFKA_BOOTSTRAP_SERVERS = "localhost:9092"
-CHECKPOINT_LOCATION = "hdfs:///tmp/checkpoints" 
+
+# HDFS checkpoint locations for fault-tolerant state management
+# Each stream requires its own checkpoint directory to track progress independently
+CHECKPOINT_BINANCE = "hdfs:///tmp/checkpoints/binance"
+CHECKPOINT_POLY_BOOKS = "hdfs:///tmp/checkpoints/polymarket_books"
+CHECKPOINT_POLY_TRADES = "hdfs:///tmp/checkpoints/polymarket_trades"
+
+# Processing trigger interval for micro-batch processing (seconds)
+# Lower values = more frequent updates but higher overhead
+# Higher values = lower overhead but higher latency
+PROCESSING_TRIGGER_INTERVAL = "5 seconds" 
 
 # Initialize Spark Session with optimized configurations for streaming
 # - stopGracefullyOnShutdown: Ensures proper cleanup on termination
@@ -345,7 +354,8 @@ query_binance = binance_agg.writeStream \
     .outputMode("update") \
     .format("console") \
     .option("truncate", "false") \
-    .trigger(processingTime="5 seconds") \
+    .option("checkpointLocation", CHECKPOINT_BINANCE) \
+    .trigger(processingTime=PROCESSING_TRIGGER_INTERVAL) \
     .start()
 
 # Start Polymarket Order Book aggregation output stream
@@ -353,7 +363,8 @@ query_poly_books = poly_books_agg.writeStream \
     .outputMode("update") \
     .format("console") \
     .option("truncate", "false") \
-    .trigger(processingTime="5 seconds") \
+    .option("checkpointLocation", CHECKPOINT_POLY_BOOKS) \
+    .trigger(processingTime=PROCESSING_TRIGGER_INTERVAL) \
     .start()
 
 # Start Polymarket Trades aggregation output stream
@@ -361,7 +372,8 @@ query_poly_trades = poly_trades_agg.writeStream \
     .outputMode("update") \
     .format("console") \
     .option("truncate", "false") \
-    .trigger(processingTime="5 seconds") \
+    .option("checkpointLocation", CHECKPOINT_POLY_TRADES) \
+    .trigger(processingTime=PROCESSING_TRIGGER_INTERVAL) \
     .start()
 
 # NOTE ON PROCESSING TRIGGER:
