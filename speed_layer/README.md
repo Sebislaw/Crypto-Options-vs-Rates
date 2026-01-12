@@ -160,7 +160,7 @@ Output is grouped by `window` (1-minute interval) and `symbol` (trading pair).
 
 Output is grouped by `window` (1-minute interval) and `market_id` (prediction market identifier).
 
-**Note:** Only order book events are processed (events with bid/ask arrays). Trade execution events are filtered out because they don't contain order book data needed for these metrics.
+**Note:** Only **order book events** are processed (events with bid/ask arrays). Trade execution events are filtered out because they don't contain order book data needed for these metrics. The stream provides order book liquidity and probability snapshots only.
 
 | Column | Type | Description | Calculation | Category |
 |--------|------|-------------|-------------|----------|
@@ -176,16 +176,16 @@ Output is grouped by `window` (1-minute interval) and `market_id` (prediction ma
 | `max_prob` | double | Highest probability in window | `max(mid_price_prob)` | Aggregate |
 | `avg_imbalance` | double | Average order book pressure | `avg(book_imbalance)` over window | Aggregate |
 | `avg_spread` | double | Average bid-ask spread | `avg(spread)` over window | Aggregate |
-| `num_updates` | long | Number of order book updates | `count(*)` of order book snapshots | Aggregate |
+| `num_updates` | long | Number of order book snapshots received | `count(*)` of order book events | Aggregate |
 
 **Example Output:**
 ```
-+-------------------------------------------+------------------+--------------+----------------+-------------------+----------+----------+----------+---------------+------------+---------------------+------------+
-|window                                     |market_id         |current_prob  |current_spread  |current_imbalance  |avg_prob  |min_prob  |max_prob  |avg_imbalance  |avg_spread  |total_shares_traded  |num_trades  |
-+-------------------------------------------+------------------+--------------+----------------+-------------------+----------+----------+----------+---------------+------------+---------------------+------------+
-|{2026-01-12 10:15:00, 2026-01-12 10:16:00}|0x71f...abc123    |0.645         |0.012           |0.234              |0.638     |0.620     |0.652     |0.189          |0.015       |15420.50             |23          |
-|{2026-01-12 10:15:00, 2026-01-12 10:16:00}|0x82e...def456    |0.512         |0.008           |-0.089             |0.518     |0.495     |0.535     |-0.045         |0.010       |8934.20              |12          |
-+-------------------------------------------+------------------+--------------+----------------+-------------------+----------+----------+----------+---------------+------------+---------------------+------------+
++-------------------------------------------+----------------------------------+--------------+----------------+-------------------+----------+----------+----------+---------------+------------+-----------+
+|window                                     |market_id                         |current_prob  |current_spread  |current_imbalance  |avg_prob  |min_prob  |max_prob  |avg_imbalance  |avg_spread  |num_updates|
++-------------------------------------------+----------------------------------+--------------+----------------+-------------------+----------+----------+----------+---------------+------------+-----------+
+|{2026-01-12 17:05:00, 2026-01-12 17:06:00}|0xefe78759ce752c475697df337...   |0.835         |0.010           |-0.797             |0.840     |0.835     |0.850     |-0.632         |0.016       |5          |
+|{2026-01-12 17:05:00, 2026-01-12 17:06:00}|0x82e4d2c3a7f8b1c9e5d3f9a2...   |0.512         |0.008           |-0.089             |0.518     |0.495     |0.535     |-0.045         |0.010       |8          |
++-------------------------------------------+----------------------------------+--------------+----------------+-------------------+----------+----------+----------+---------------+------------+-----------+
 ```
 
 **Interpretation:**
@@ -360,17 +360,19 @@ buy_sentiment = taker_buy_quote / quote_asset_volume
 - `timestamp`: Event timestamp (milliseconds)
 - `bids`: Array of bid orders [{price, size}]
 - `asks`: Array of ask orders [{price, size}]
-- `price`: Trade execution price (for trade events)
-- `size`: Trade execution size
+- Note: Trade events (with `price` and `size` fields) are filtered out; only order book snapshots are processed
 
 **Computed Metrics (1-minute windows):**
 | Metric | Description | Use Case |
 |--------|-------------|----------|
-| `avg_prob` | Average probability (mid-price) | Market expectation |
-| `avg_imbalance` | Order book imbalance ratio | Buying/selling pressure |
-| `avg_spread` | Average bid-ask spread | Liquidity indicator |
-| `total_shares_traded` | Total volume traded | Activity level |
-| `num_trades` | Number of trades executed | Market depth |
+| `current_prob` | Latest market probability (mid-price) | Current market expectation |
+| `avg_prob` | Average probability over window | Market expectation trend |
+| `min_prob`, `max_prob` | Probability range | Market uncertainty indicator |
+| `current_imbalance` | Latest order book imbalance ratio | Current buying/selling pressure |
+| `avg_imbalance` | Average order book imbalance | Overall pressure during window |
+| `current_spread` | Latest bid-ask spread | Current liquidity |
+| `avg_spread` | Average bid-ask spread | Liquidity trend |
+| `num_updates` | Number of order book snapshots | Activity frequency |
 
 **Order Book Imbalance Calculation:**
 ```python
@@ -690,4 +692,4 @@ For issues or questions:
 
 ---
 
-**Last Updated:** 2026-01-11
+**Last Updated:** 2026-01-12
