@@ -1,0 +1,49 @@
+# HBase Schema Definition for Crypto Options vs Rates Project
+# This file contains HBase shell commands to create the serving layer tables
+# Execute with: hbase shell < hbase_schema.hbase
+#
+# SCHEMA ALIGNED WITH: batch_layer/spark/config.py
+
+# ==============================================================================
+# Table: market_analytics (Batch Layer Output)
+# Purpose: Store historical 15-minute window analytics for batch processing results
+# RowKey Format: SYMBOL#WINDOW_END_TIMESTAMP (e.g., BTC#1767201300)
+# ==============================================================================
+
+# Check if table exists and disable/drop if recreating
+# disable_if_exists 'market_analytics'
+# drop_if_exists 'market_analytics'
+
+create_if_not_exists 'market_analytics', \
+  {NAME => 'price_data', VERSIONS => 1, COMPRESSION => 'GZ', TTL => 31536000}, \
+  {NAME => 'bet_data', VERSIONS => 1, COMPRESSION => 'GZ', TTL => 31536000}, \
+  {NAME => 'analysis', VERSIONS => 1, COMPRESSION => 'GZ', TTL => 31536000}
+
+# Column Family Details (aligned with batch_layer/spark/batch_analytics.py):
+# price_data:  Binance OHLC data
+#   - open, close, high, low, volume
+# bet_data:    Polymarket probability metrics
+#   - avg_prob, max_prob, activity
+# analysis:    Computed correlation results
+#   - result (CORRECT/WRONG), price_movement, actual_direction, predicted_direction
+#   - timestamp, symbol, crypto
+
+# ==============================================================================
+# Table: market_live (Speed Layer Output)
+# Purpose: Store real-time streaming data for dashboard display (~60 min window)
+# RowKey Format: SYMBOL#REVERSE_TIMESTAMP (newest first for fast scans)
+# ==============================================================================
+
+create_if_not_exists 'market_live', \
+  {NAME => 'd', VERSIONS => 1, COMPRESSION => 'GZ', TTL => 86400}
+
+# Column Family Details:
+# d: Compact name for live data (reduces storage overhead)
+#   - binance_price, poly_last_trade, poly_best_bid, poly_best_ask, implied_prob
+
+# ==============================================================================
+# Verification Commands (run manually after creation)
+# ==============================================================================
+# list
+# describe 'market_analytics'
+# describe 'market_live'
