@@ -3,6 +3,7 @@
 # ==============================================================================
 # Script Name: run_functional_tests.sh
 # Description: Runs all functional tests for the Crypto Options vs Rates project
+# Requirements: Must be run on the VM with HBase running
 # ==============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -12,17 +13,53 @@ echo "=================================================="
 echo "   Running Functional Tests"
 echo "=================================================="
 
-# Check if we're in a conda environment
+# ------------------------------------------------------------------------------
+# 1. Activate Conda Environment
+# ------------------------------------------------------------------------------
+# The VM uses miniconda3 with an environment called 'venv'
+MINICONDA_DIR="$HOME/miniconda3"
+ENV_NAME="venv"
+
 if [ -z "$CONDA_DEFAULT_ENV" ]; then
-    echo "[INFO] Attempting to activate conda environment..."
-    if [ -f ~/miniconda/bin/activate ]; then
-        source ~/miniconda/bin/activate crypto_project 2>/dev/null
-    elif [ -f ~/anaconda3/bin/activate ]; then
-        source ~/anaconda3/bin/activate crypto_project 2>/dev/null
+    echo "[INFO] Activating conda environment '$ENV_NAME'..."
+    
+    if [ -f "$MINICONDA_DIR/etc/profile.d/conda.sh" ]; then
+        source "$MINICONDA_DIR/etc/profile.d/conda.sh"
+        conda activate "$ENV_NAME"
+    elif [ -f "$MINICONDA_DIR/bin/activate" ]; then
+        source "$MINICONDA_DIR/bin/activate" "$ENV_NAME"
+    else
+        echo "[!] ERROR: Conda not found at $MINICONDA_DIR"
+        echo "    Run console_scripts/initialize_project.sh first."
+        exit 1
     fi
 fi
 
+# Verify we're in an environment
+if [ -z "$CONDA_DEFAULT_ENV" ]; then
+    echo "[!] WARNING: Could not activate conda environment."
+    echo "    Tests may fail if dependencies are not installed."
+fi
+
+# ------------------------------------------------------------------------------
+# 2. Check/Install Test Dependencies
+# ------------------------------------------------------------------------------
+echo "[INFO] Checking test dependencies..."
+
+# Check for pytest
+if ! python -c "import pytest" 2>/dev/null; then
+    echo "[INFO] Installing pytest..."
+    pip install -q pytest>=8.0.0
+fi
+
+# Check for happybase
+if ! python -c "import happybase" 2>/dev/null; then
+    echo "[INFO] Installing happybase..."
+    pip install -q happybase>=1.2.0
+fi
+
 echo "[INFO] Python: $(which python)"
+echo "[INFO] Environment: ${CONDA_DEFAULT_ENV:-system}"
 echo "[INFO] Working directory: $PROJECT_ROOT"
 echo ""
 
