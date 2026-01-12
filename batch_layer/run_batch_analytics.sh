@@ -48,13 +48,13 @@ echo "  ✓ Spark is available"
 
 echo ""
 
-# Step 2: Create/Verify Hive Tables
+# Step 2: Create/Verify Hive Tables (Idempotent - only creates if not exists)
 echo "============================================================"
 echo "  Step 1: Setting up Hive Tables"
 echo "============================================================"
 
 if [ -f "$BATCH_DIR/hive/create_tables.sql" ]; then
-    echo "Creating Hive tables..."
+    echo "Verifying Hive tables (idempotent - using IF NOT EXISTS)..."
     hive -f "$BATCH_DIR/hive/create_tables.sql" 2>&1 | tee "$LOG_DIR/hive_create_tables.log"
     
     echo ""
@@ -66,23 +66,31 @@ fi
 
 echo ""
 
-# Step 3: Create/Verify HBase Table
+# Step 3: Create/Verify HBase Table (Idempotent - only creates if not exists)
 echo "============================================================"
 echo "  Step 2: Setting up HBase Table"
 echo "============================================================"
 
-if [ -f "$BATCH_DIR/hbase/create_table.sh" ]; then
-    bash "$BATCH_DIR/hbase/create_table.sh" 2>&1 | tee "$LOG_DIR/hbase_create_table.log"
+# Check if table already exists
+TABLE_EXISTS=$(echo "exists 'market_analytics'" | hbase shell -n 2>/dev/null | grep -c "true")
+
+if [ "$TABLE_EXISTS" -eq 1 ]; then
+    echo "HBase table 'market_analytics' already exists. Skipping creation."
 else
-    echo "[WARN] HBase creation script not found."
-    echo "       Creating table manually..."
-    
-    hbase shell << 'EOF'
+    echo "HBase table 'market_analytics' does not exist. Creating..."
+    if [ -f "$BATCH_DIR/hbase/create_table.sh" ]; then
+        bash "$BATCH_DIR/hbase/create_table.sh" 2>&1 | tee "$LOG_DIR/hbase_create_table.log"
+    else
+        echo "[WARN] HBase creation script not found."
+        echo "       Creating table manually..."
+        
+        hbase shell << 'EOF'
 create 'market_analytics', 
   {NAME => 'price_data', VERSIONS => 1},
   {NAME => 'bet_data', VERSIONS => 1},
   {NAME => 'analysis', VERSIONS => 1}
 EOF
+    fi
 fi
 
 echo ""
@@ -126,8 +134,10 @@ if [ $SPARK_EXIT_CODE -eq 0 ]; then
     echo "✓ Batch analytics completed successfully!"
     echo ""
     echo "Check results:"
-    echo "  - HBase: echo 'scan \"market_analytics\", {LIMIT => 5}' | hbase shell"
+    echo "  - HDFS:  hdfs dfs -ls /user/vagrant/batch/analytics_results"
     echo "  - Logs:  cat $LOG_DIR/spark_batch_analytics.log"
+    echo ""
+    echo "Note: HBase integration not yet implemented - results stored in HDFS only"
 else
     echo "✗ Batch analytics failed with exit code: $SPARK_EXIT_CODE"
     echo "  Check logs: $LOG_DIR/spark_batch_analytics.log"

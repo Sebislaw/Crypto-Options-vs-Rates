@@ -18,11 +18,14 @@ fi
 # Create table using HBase shell
 hbase shell << 'EOF'
 
-# Disable and drop if exists (for fresh start - comment out in production)
-disable 'market_analytics'
-drop 'market_analytics'
+# Check if table exists first (idempotent behavior)
+# Disable and drop only if explicitly needed for fresh start
+# Comment these out for production use:
+# disable 'market_analytics'
+# drop 'market_analytics'
 
-# Create table with three column families
+# Create table with three column families (only if it doesn't exist)
+# HBase will error if table already exists, which is expected behavior
 create 'market_analytics', 
   {NAME => 'price_data', VERSIONS => 1, COMPRESSION => 'GZ'},
   {NAME => 'bet_data', VERSIONS => 1, COMPRESSION => 'GZ'},
