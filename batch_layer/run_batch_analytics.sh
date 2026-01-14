@@ -134,10 +134,9 @@ if [ $SPARK_EXIT_CODE -eq 0 ]; then
     echo "✓ Batch analytics completed successfully!"
     echo ""
     echo "Check results:"
-    echo "  - HDFS:  hdfs dfs -ls /user/vagrant/batch/analytics_results"
-    echo "  - Logs:  cat $LOG_DIR/spark_batch_analytics.log"
-    echo ""
-    echo "Note: HBase integration not yet implemented - results stored in HDFS only"
+    echo "  - HDFS:   hdfs dfs -ls /user/vagrant/batch/analytics_results"
+    echo "  - HBase:  echo 'scan \"market_analytics\", {LIMIT => 5}' | hbase shell"
+    echo "  - Logs:   cat $LOG_DIR/spark_batch_analytics.log"
 else
     echo "✗ Batch analytics failed with exit code: $SPARK_EXIT_CODE"
     echo "  Check logs: $LOG_DIR/spark_batch_analytics.log"
