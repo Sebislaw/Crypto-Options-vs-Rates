@@ -9,34 +9,37 @@ import unittest
 import sys
 import os
 from datetime import datetime
+import importlib.util
 
-# Add serving layer to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'serving_layer', 'hbase'))
+# Load serving_layer/hbase/config.py explicitly to avoid conflicts with other config.py files
+_config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'serving_layer', 'hbase', 'config.py')
+_spec = importlib.util.spec_from_file_location("hbase_config", _config_path)
+_config = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_config)
 
-from config import (
-    HBASE_HOST,
-    HBASE_PORT,
-    TABLE_MARKET_ANALYTICS,
-    TABLE_MARKET_LIVE,
-    CF_PRICES,
-    CF_BETTING,
-    CF_CORRELATION,
-    CF_BINANCE,
-    CF_POLY_BOOKS,
-    CF_POLY_TRADES,
-    ROWKEY_SEPARATOR,
-    REVERSE_TIMESTAMP_MAX,
-    SYMBOLS,
-    generate_batch_rowkey,
-    generate_live_rowkey,
-    generate_speed_rowkey,
-    parse_rowkey,
-    parse_speed_rowkey,
-    reverse_timestamp_to_actual,
-    SPEED_ROW_BINANCE,
-    SPEED_ROW_POLY_BOOKS,
-    SPEED_ROW_POLY_TRADES,
-)
+# Import constants and functions from the loaded module
+HBASE_HOST = _config.HBASE_HOST
+HBASE_PORT = _config.HBASE_PORT
+TABLE_MARKET_ANALYTICS = _config.TABLE_MARKET_ANALYTICS
+TABLE_MARKET_LIVE = _config.TABLE_MARKET_LIVE
+CF_PRICES = _config.CF_PRICES
+CF_BETTING = _config.CF_BETTING
+CF_CORRELATION = _config.CF_CORRELATION
+CF_BINANCE = _config.CF_BINANCE
+CF_POLY_BOOKS = _config.CF_POLY_BOOKS
+CF_POLY_TRADES = _config.CF_POLY_TRADES
+ROWKEY_SEPARATOR = _config.ROWKEY_SEPARATOR
+REVERSE_TIMESTAMP_MAX = _config.REVERSE_TIMESTAMP_MAX
+SYMBOLS = _config.SYMBOLS
+generate_batch_rowkey = _config.generate_batch_rowkey
+generate_live_rowkey = _config.generate_live_rowkey
+generate_speed_rowkey = _config.generate_speed_rowkey
+parse_rowkey = _config.parse_rowkey
+parse_speed_rowkey = _config.parse_speed_rowkey
+reverse_timestamp_to_actual = _config.reverse_timestamp_to_actual
+SPEED_ROW_BINANCE = _config.SPEED_ROW_BINANCE
+SPEED_ROW_POLY_BOOKS = _config.SPEED_ROW_POLY_BOOKS
+SPEED_ROW_POLY_TRADES = _config.SPEED_ROW_POLY_TRADES
 
 
 class TestServingLayerConfig(unittest.TestCase):
