@@ -334,26 +334,88 @@ poly_trades_agg = poly_trades \
     )
 
 # --- 6. OUTPUT SINKS ---
-# Write aggregated results to console for real-time monitoring
-# Note: Console sink doesn't require checkpoint locations
-# TODO: Add HBase or HDFS sink for persistence when VM HDFS configuration is ready
+# Write aggregated results to HBase (persistent) and console (debug)
+# Using foreachBatch to handle both outputs in a single micro-batch
 #
 # Three separate output streams:
-#   1. Binance: Cryptocurrency price/volume metrics
-#   2. Polymarket Books: Order book probability/spread/imbalance metrics
-#   3. Polymarket Trades: Trade volume and count metrics
+#   1. Binance: Cryptocurrency price/volume metrics -> market_live:b
+#   2. Polymarket Books: Order book probability/spread/imbalance -> market_live:p
+#   3. Polymarket Trades: Trade volume and count metrics -> market_live:t
 #
 # Output Mode: "update" - Only changed aggregations are output
 # Trigger: Process every 5 seconds for near real-time results
 
+# Import HBase sink functions
+try:
+    from hbase_sink import (
+        write_binance_batch,
+        write_poly_books_batch,
+        write_poly_trades_batch,
+        set_hbase_enabled,
+        test_connection
+    )
+    HBASE_AVAILABLE = True
+except ImportError as e:
+    print(f">>> WARNING: HBase sink not available: {e}")
+    print(">>> Console-only output mode active.")
+    HBASE_AVAILABLE = False
+    
+    # Fallback stub functions
+    def write_binance_batch(df, batch_id): pass
+    def write_poly_books_batch(df, batch_id): pass
+    def write_poly_trades_batch(df, batch_id): pass
+
+# Configuration: Enable/disable HBase writes
+HBASE_WRITE_ENABLED = True
+DEBUG_CONSOLE_ENABLED = True  # Keep console output for debugging
+
+
+def write_with_console(hbase_writer, stream_name):
+    """
+    Create a foreachBatch function that writes to both HBase and console.
+    
+    Args:
+        hbase_writer: HBase writer function (e.g., write_binance_batch)
+        stream_name: Name for logging
+        
+    Returns:
+        Function suitable for foreachBatch
+    """
+    def writer(batch_df, batch_id):
+        if batch_df.isEmpty():
+            return
+        
+        # Write to HBase (if enabled)
+        if HBASE_AVAILABLE and HBASE_WRITE_ENABLED:
+            try:
+                hbase_writer(batch_df, batch_id)
+            except Exception as e:
+                print(f">>> {stream_name} HBase write failed: {e}")
+        
+        # Write to console (if enabled) for debugging
+        if DEBUG_CONSOLE_ENABLED:
+            print(f"\n>>> {stream_name} Batch {batch_id}:")
+            batch_df.show(truncate=False)
+    
+    return writer
+
+
 print(">>> Starting Advanced Stream Processing...")
 print(">>> Three output streams: Binance, Polymarket Books, Polymarket Trades")
 
-# Start Binance aggregation output stream
+# Test HBase connection at startup
+if HBASE_AVAILABLE:
+    print(">>> Testing HBase connection...")
+    if test_connection():
+        print(">>> HBase connection successful. Writing to market_live table.")
+    else:
+        print(">>> WARNING: HBase connection failed. Console-only mode.")
+        HBASE_WRITE_ENABLED = False
+
+# Start Binance aggregation output stream with HBase + console
 query_binance = binance_agg.writeStream \
     .outputMode("update") \
-    .format("console") \
-    .option("truncate", "false") \
+    .foreachBatch(write_with_console(write_binance_batch, "Binance")) \
     .option("checkpointLocation", CHECKPOINT_BINANCE) \
     .trigger(processingTime=PROCESSING_TRIGGER_INTERVAL) \
     .start()
@@ -361,8 +423,7 @@ query_binance = binance_agg.writeStream \
 # Start Polymarket Order Book aggregation output stream
 query_poly_books = poly_books_agg.writeStream \
     .outputMode("update") \
-    .format("console") \
-    .option("truncate", "false") \
+    .foreachBatch(write_with_console(write_poly_books_batch, "PolyBooks")) \
     .option("checkpointLocation", CHECKPOINT_POLY_BOOKS) \
     .trigger(processingTime=PROCESSING_TRIGGER_INTERVAL) \
     .start()
@@ -370,8 +431,7 @@ query_poly_books = poly_books_agg.writeStream \
 # Start Polymarket Trades aggregation output stream
 query_poly_trades = poly_trades_agg.writeStream \
     .outputMode("update") \
-    .format("console") \
-    .option("truncate", "false") \
+    .foreachBatch(write_with_console(write_poly_trades_batch, "PolyTrades")) \
     .option("checkpointLocation", CHECKPOINT_POLY_TRADES) \
     .trigger(processingTime=PROCESSING_TRIGGER_INTERVAL) \
     .start()
@@ -386,6 +446,8 @@ query_poly_trades = poly_trades_agg.writeStream \
 # state management overhead. For latency-critical use cases, 5 seconds is appropriate.
 
 print(">>> All streaming queries started successfully.")
+print(f">>> HBase writes: {'ENABLED' if HBASE_WRITE_ENABLED else 'DISABLED'}")
+print(f">>> Console debug: {'ENABLED' if DEBUG_CONSOLE_ENABLED else 'DISABLED'}")
 print(">>> Monitoring for failures...")
 
 # --- 7. MONITORING & ERROR HANDLING ---

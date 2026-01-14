@@ -32,7 +32,12 @@ CF_BETTING = 'bet_data'        # Polymarket betting data
 CF_CORRELATION = 'analysis'    # Analytics results
 
 # market_live column families
-CF_DATA = 'd'  # Compact name for live data
+CF_DATA = 'd'  # Legacy compact name (kept for backward compatibility)
+
+# Speed layer column families (for windowed aggregations)
+CF_BINANCE = 'b'           # Binance 1-min window aggregations
+CF_POLY_BOOKS = 'p'        # Polymarket order book aggregations
+CF_POLY_TRADES = 't'       # Polymarket trade aggregations
 
 
 # ==============================================================================
@@ -61,12 +66,35 @@ COL_TIMESTAMP = 'timestamp'
 COL_SYMBOL = 'symbol'
 COL_CRYPTO = 'crypto'
 
-# d:* columns (live data)
+# d:* columns (legacy live data - kept for compatibility)
 COL_BINANCE_PRICE = 'binance_price'
 COL_POLY_LAST_TRADE = 'poly_last_trade'
 COL_POLY_BEST_BID = 'poly_best_bid'
 COL_POLY_BEST_ASK = 'poly_best_ask'
 COL_IMPLIED_PROB = 'implied_prob'
+
+# b:* columns (Binance speed layer - 1-min windows)
+COL_CURRENT_PRICE = 'current_price'
+COL_AVG_PRICE = 'avg_price'
+COL_MIN_PRICE = 'min_price'
+COL_MAX_PRICE = 'max_price'
+COL_TOTAL_VOLUME = 'total_volume'
+COL_AVG_SENTIMENT = 'avg_sentiment'
+COL_CURRENT_SENTIMENT = 'current_sentiment'
+COL_TICKS = 'ticks'
+
+# p:* columns (Polymarket books speed layer - 1-min windows)
+COL_CURRENT_PROB = 'current_prob'
+COL_MIN_PROB = 'min_prob'
+COL_CURRENT_SPREAD = 'current_spread'
+COL_AVG_SPREAD = 'avg_spread'
+COL_CURRENT_IMBALANCE = 'current_imbalance'
+COL_AVG_IMBALANCE = 'avg_imbalance'
+COL_NUM_UPDATES = 'num_updates'
+
+# t:* columns (Polymarket trades speed layer - 1-min windows)
+COL_TOTAL_SHARES = 'total_shares'
+COL_NUM_TRADES = 'num_trades'
 
 
 # ==============================================================================
@@ -148,3 +176,49 @@ def reverse_timestamp_to_actual(reverse_ts: int) -> int:
         Actual Unix timestamp (milliseconds)
     """
     return REVERSE_TIMESTAMP_MAX - reverse_ts
+
+
+# Speed layer row types
+SPEED_ROW_BINANCE = 'BIN'
+SPEED_ROW_POLY_BOOKS = 'PB'
+SPEED_ROW_POLY_TRADES = 'PT'
+
+
+def generate_speed_rowkey(row_type: str, identifier: str, window_end_ms: int) -> str:
+    """
+    Generate a RowKey for speed layer windowed data.
+    
+    Format: TYPE#IDENTIFIER#REVERSE_WINDOW_END
+    Uses reverse timestamp so newest windows sort first.
+    
+    Args:
+        row_type: Row type prefix (BIN, PB, PT)
+        identifier: Symbol (e.g., 'BTCUSDT') or market_id
+        window_end_ms: Window end timestamp (milliseconds)
+        
+    Returns:
+        Formatted RowKey string
+        
+    Example:
+        BIN#BTCUSDT#8232798699999 (for window ending at 2026-01-14 12:00:00)
+    """
+    reverse_ts = REVERSE_TIMESTAMP_MAX - window_end_ms
+    return f"{row_type}{ROWKEY_SEPARATOR}{identifier}{ROWKEY_SEPARATOR}{reverse_ts}"
+
+
+def parse_speed_rowkey(rowkey: str) -> tuple:
+    """
+    Parse a speed layer RowKey into its components.
+    
+    Args:
+        rowkey: HBase RowKey string
+        
+    Returns:
+        Tuple of (row_type, identifier, window_end_ms)
+    """
+    parts = rowkey.split(ROWKEY_SEPARATOR)
+    if len(parts) != 3:
+        raise ValueError(f"Invalid speed RowKey format: {rowkey}")
+    row_type, identifier, reverse_ts = parts
+    window_end_ms = REVERSE_TIMESTAMP_MAX - int(reverse_ts)
+    return row_type, identifier, window_end_ms
