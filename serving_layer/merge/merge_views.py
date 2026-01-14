@@ -420,25 +420,35 @@ class MergeEngine:
         window_count: int = 96  # 24 hours of 15-min windows
     ) -> Dict:
         """
-        Calculate prediction accuracy for recent windows.
+        Calculate prediction accuracy for available batch data.
         
         Args:
             symbol: Cryptocurrency symbol
-            window_count: Number of windows to analyze
+            window_count: Maximum number of windows to analyze (not used as hard filter)
             
         Returns:
             Dict with accuracy statistics
         """
-        now = int(time.time())
-        start_ts = now - (window_count * 15 * 60)  # 15 min per window
+        # Query ALL batch data for this symbol (use very wide time range)
+        # This handles the case where VM clock differs from data timestamps
+        start_ts = 0  # Beginning of time
+        end_ts = 9999999999  # Year ~2286
         
-        analytics = self._query_batch_layer(symbol, start_ts, now)
+        analytics = self._query_batch_layer(symbol, start_ts, end_ts)
+        
+        # Limit to most recent windows if we have more than window_count
+        if len(analytics) > window_count:
+            analytics = sorted(analytics, key=lambda x: x['window_end_ts'], reverse=True)[:window_count]
         
         if not analytics:
             return {'symbol': symbol, 'windows_analyzed': 0, 'accuracy': None}
         
         correct = sum(1 for r in analytics if r['analysis'].get('result', '').startswith('CORRECT'))
         total = len(analytics)
+        
+        # Get actual time range from data
+        min_ts = min(r['window_end_ts'] for r in analytics)
+        max_ts = max(r['window_end_ts'] for r in analytics)
         
         return {
             'symbol': symbol,
@@ -447,8 +457,8 @@ class MergeEngine:
             'wrong_predictions': total - correct,
             'accuracy': correct / total if total > 0 else 0,
             'time_range': {
-                'start': datetime.fromtimestamp(start_ts).isoformat(),
-                'end': datetime.fromtimestamp(now).isoformat()
+                'start': datetime.fromtimestamp(min_ts).isoformat(),
+                'end': datetime.fromtimestamp(max_ts).isoformat()
             }
         }
 
