@@ -97,7 +97,8 @@ def write_binance_batch(batch_df, batch_id):
         window, symbol, current_price, current_sentiment, avg_price,
         min_price, max_price, volatility, total_usdt_volume, avg_sentiment, ticks
     """
-    if batch_df.isEmpty():
+    # Use count() for Spark 2.x/3.x compatibility (isEmpty() is Spark 3.3+)
+    if batch_df.count() == 0:
         return
     
     conn = _get_connection()
@@ -158,7 +159,8 @@ def write_poly_books_batch(batch_df, batch_id):
         window, market_id, current_prob, current_spread, current_imbalance,
         avg_prob, min_prob, max_prob, avg_imbalance, avg_spread, num_updates
     """
-    if batch_df.isEmpty():
+    # Use count() for Spark 2.x/3.x compatibility (isEmpty() is Spark 3.3+)
+    if batch_df.count() == 0:
         return
     
     conn = _get_connection()
@@ -220,7 +222,8 @@ def write_poly_trades_batch(batch_df, batch_id):
     Expected columns:
         window, market_id, total_shares_traded, num_trades
     """
-    if batch_df.isEmpty():
+    # Use count() for Spark 2.x/3.x compatibility (isEmpty() is Spark 3.3+)
+    if batch_df.count() == 0:
         return
     
     conn = _get_connection()

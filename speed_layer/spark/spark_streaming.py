@@ -382,7 +382,8 @@ def write_with_console(hbase_writer, stream_name):
         Function suitable for foreachBatch
     """
     def writer(batch_df, batch_id):
-        if batch_df.isEmpty():
+        # Use count() for Spark 2.x/3.x compatibility (isEmpty() is Spark 3.3+)
+        if batch_df.count() == 0:
             return
         
         # Write to HBase (if enabled)
