@@ -105,8 +105,22 @@ class WebSocketOrderBook:
             print(f"[!] HDFS Write Error: {e}")
 
     def on_message(self, ws: WebSocketApp, message: str):
-        # "PONG" messages break the NiFi JSON parser. Skip them.
+        # Skip "PONG" messages - they break the NiFi JSON parser
         if "PONG" in message:
+            return
+        
+        # Skip empty messages ([], {}, whitespace-only)
+        stripped = message.strip()
+        if stripped in ('[]', '{}', ''):
+            return
+        
+        # Skip messages that are just empty arrays/objects after parsing
+        try:
+            parsed = json.loads(message)
+            if parsed in ([], {}, None):
+                return
+        except json.JSONDecodeError:
+            # If it's not valid JSON, skip it
             return
         
         self.buffer.append(message)
