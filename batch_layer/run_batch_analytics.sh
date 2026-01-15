@@ -43,6 +43,25 @@ if ! echo "status" | hbase shell -n > /dev/null 2>&1; then
 fi
 echo "  ✓ HBase is running"
 
+# Check if HBase Thrift server is running (required for happybase)
+if ! nc -z localhost 9090 2>/dev/null; then
+    echo "  ⚠ HBase Thrift server not running on port 9090. Starting..."
+    nohup hbase thrift start -p 9090 > /dev/null 2>&1 &
+    # Wait for Thrift to start
+    for i in {1..10}; do
+        if nc -z localhost 9090 2>/dev/null; then
+            echo "  ✓ HBase Thrift server started on port 9090"
+            break
+        fi
+        sleep 1
+    done
+    if ! nc -z localhost 9090 2>/dev/null; then
+        echo "[WARNING] Could not start HBase Thrift server. HBase writes may fail."
+    fi
+else
+    echo "  ✓ HBase Thrift server is running on port 9090"
+fi
+
 # Check if Spark is available
 if ! command -v spark-submit &> /dev/null; then
     echo "[ERROR] spark-submit not found in PATH"
