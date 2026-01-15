@@ -11,6 +11,10 @@ BATCH_DIR="$PROJECT_ROOT/batch_layer"
 SPARK_SCRIPT="$BATCH_DIR/spark/batch_analytics.py"
 LOG_DIR="$PROJECT_ROOT/logs"
 
+# Configure PySpark to use the Conda venv Python (where happybase is installed)
+export PYSPARK_PYTHON="$HOME/miniconda3/envs/venv/bin/python"
+export PYSPARK_DRIVER_PYTHON="$HOME/miniconda3/envs/venv/bin/python"
+
 # Create log directory
 mkdir -p "$LOG_DIR"
 
