@@ -134,7 +134,7 @@ The first part of the speed layer is Kafka, which partly is implemented in the i
 
 Three Kafka topics are created: `binance`, `polymarket_trade` and `polymarket_metadata`. The first 2 are streamed into Spark in the speed layer. The metadata topic is currently not used, as saving historical data (15 minute markets, so 15 minutes at least) in the speed layer is not a functional choice beacuse of the virtual machines we use for development. The metadata from batch layer will be used in the serving layer to correctly map the data in from the speed layer.
 
-Spark implementation for the speed layer is located in `speed_layer/spark` directory. Script `console_scripts/initialize_project.sh` sets up the spark job and the data from spark is saved directly in the HBASE-TODO (currently not saved to HBASE).
+Spark implementation for the speed layer is located in `speed_layer/spark` directory. Script `console_scripts/initialize_project.sh` sets up the spark job and the data from spark is saved directly in the HBASE.
 
 To see spark batches: 
 
