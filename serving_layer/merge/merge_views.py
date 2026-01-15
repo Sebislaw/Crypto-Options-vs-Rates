@@ -151,8 +151,11 @@ class MergeEngine:
         """
         Query the batch layer (market_analytics) for historical data.
         
+        The batch layer uses RowKey format: SYMBOL_REVERSE_TIMESTAMP
+        where REVERSE_TIMESTAMP = 9999999999999 - actual_ts * 1000
+        
         Args:
-            symbol: Cryptocurrency symbol
+            symbol: Cryptocurrency symbol (accepts BTC or BTCUSDT format)
             start_ts: Start timestamp (seconds)
             end_ts: End timestamp (seconds)
             
@@ -162,13 +165,23 @@ class MergeEngine:
         table = self.connection.table(TABLE_MARKET_ANALYTICS)
         records = []
         
-        # Define scan range based on RowKey format: SYMBOL#TIMESTAMP
-        start_row = f"{symbol}{ROWKEY_SEPARATOR}{start_ts}".encode()
-        stop_row = f"{symbol}{ROWKEY_SEPARATOR}{end_ts + 1}".encode()
+        # Normalize symbol to Binance format if needed (BTC -> BTCUSDT)
+        binance_symbol = symbol if symbol.endswith('USDT') else f"{symbol}USDT"
         
-        for rowkey, data in table.scan(row_start=start_row, row_stop=stop_row):
-            record = self._parse_batch_record(rowkey.decode(), data)
-            records.append(record)
+        # Batch layer uses underscore separator and reverse timestamps
+        # Scan with prefix to get all records for the symbol
+        prefix = f"{binance_symbol}_".encode()
+        
+        for rowkey, data in table.scan(row_prefix=prefix):
+            try:
+                record = self._parse_batch_record(rowkey.decode(), data)
+                # Filter by time range (timestamps are in record)
+                record_ts = record.get('window_end_ts', 0)
+                if start_ts <= record_ts <= end_ts:
+                    records.append(record)
+            except Exception as e:
+                # Skip malformed records
+                continue
         
         return records
     
@@ -176,8 +189,11 @@ class MergeEngine:
         """
         Query the speed layer (market_live) for real-time data.
         
+        Speed layer uses RowKey format: TYPE#IDENTIFIER#REVERSE_TIMESTAMP
+        where TYPE is BIN (Binance), PB (Polymarket Books), PT (Polymarket Trades)
+        
         Args:
-            symbol: Cryptocurrency symbol
+            symbol: Cryptocurrency symbol (accepts BTC or BTCUSDT format)
             limit: Maximum number of records
             
         Returns:
@@ -186,24 +202,45 @@ class MergeEngine:
         table = self.connection.table(TABLE_MARKET_LIVE)
         records = []
         
-        # Scan with symbol prefix (reverse timestamp ensures newest first)
-        prefix = f"{symbol}{ROWKEY_SEPARATOR}".encode()
+        # Normalize symbol to Binance format if needed (BTC -> BTCUSDT)
+        binance_symbol = symbol if symbol.endswith('USDT') else f"{symbol}USDT"
         
-        for rowkey, data in table.scan(row_prefix=prefix, limit=limit):
-            record = self._parse_live_record(rowkey.decode(), data)
-            records.append(record)
+        # Speed layer uses TYPE#IDENTIFIER#REVERSE_TS format
+        # First try scanning for Binance data with BIN# prefix
+        for row_type in ['BIN']:
+            prefix = f"{row_type}{ROWKEY_SEPARATOR}{binance_symbol}{ROWKEY_SEPARATOR}".encode()
+            
+            for rowkey, data in table.scan(row_prefix=prefix, limit=limit):
+                try:
+                    record = self._parse_live_record(rowkey.decode(), data)
+                    records.append(record)
+                except Exception:
+                    continue
         
         return records
     
     def _parse_batch_record(self, rowkey: str, data: Dict) -> Dict:
-        """Parse a batch layer HBase row into a structured dict."""
-        symbol, ts = rowkey.split(ROWKEY_SEPARATOR)
+        """
+        Parse a batch layer HBase row into a structured dict.
+        
+        Batch layer RowKey format: SYMBOL_REVERSE_TIMESTAMP
+        where REVERSE_TIMESTAMP = 9999999999999 - (actual_ts_seconds * 1000)
+        """
+        # Batch layer uses underscore separator
+        parts = rowkey.split('_')
+        symbol = parts[0]
+        reverse_ts = int(parts[1]) if len(parts) > 1 else 0
+        
+        # Convert reverse timestamp back to actual timestamp
+        # reverse_ts = REVERSE_TIMESTAMP_MAX - (ts_seconds * 1000)
+        # So: ts_seconds = (REVERSE_TIMESTAMP_MAX - reverse_ts) / 1000
+        actual_ts_seconds = (REVERSE_TIMESTAMP_MAX - reverse_ts) // 1000
         
         record = {
             'rowkey': rowkey,
             'symbol': symbol,
-            'window_end_ts': int(ts),
-            'window_end_time': datetime.fromtimestamp(int(ts)).isoformat(),
+            'window_end_ts': actual_ts_seconds,
+            'window_end_time': datetime.fromtimestamp(actual_ts_seconds).isoformat(),
             'source': 'batch',
             'price_data': {},
             'bet_data': {},
@@ -212,19 +249,48 @@ class MergeEngine:
         
         for key, value in data.items():
             cf, col = key.decode().split(':')
-            if cf in record:
-                record[cf][col] = self._parse_value(value.decode())
+            # Map column family names to dict keys
+            cf_key = cf
+            if cf == 'price_data':
+                cf_key = 'price_data'
+            elif cf == 'bet_data':
+                cf_key = 'bet_data'
+            elif cf == 'analysis':
+                cf_key = 'analysis'
+            
+            if cf_key in record:
+                record[cf_key][col] = self._parse_value(value.decode())
         
         return record
     
     def _parse_live_record(self, rowkey: str, data: Dict) -> Dict:
-        """Parse a speed layer HBase row into a structured dict."""
-        symbol, reverse_ts = rowkey.split(ROWKEY_SEPARATOR)
-        actual_ts = REVERSE_TIMESTAMP_MAX - int(reverse_ts)
+        """
+        Parse a speed layer HBase row into a structured dict.
+        
+        Speed layer RowKey format: TYPE#IDENTIFIER#REVERSE_TIMESTAMP
+        where TYPE is BIN/PB/PT and REVERSE_TIMESTAMP = 9999999999999 - window_end_ms
+        """
+        parts = rowkey.split(ROWKEY_SEPARATOR)
+        
+        if len(parts) == 3:
+            # Format: TYPE#IDENTIFIER#REVERSE_TS (speed layer windowed data)
+            row_type, identifier, reverse_ts_str = parts
+            reverse_ts = int(reverse_ts_str)
+            actual_ts = REVERSE_TIMESTAMP_MAX - reverse_ts
+            symbol = identifier
+        elif len(parts) == 2:
+            # Legacy format: SYMBOL#REVERSE_TS
+            symbol, reverse_ts_str = parts
+            reverse_ts = int(reverse_ts_str)
+            actual_ts = REVERSE_TIMESTAMP_MAX - reverse_ts
+            row_type = 'LEGACY'
+        else:
+            raise ValueError(f"Invalid rowkey format: {rowkey}")
         
         record = {
             'rowkey': rowkey,
             'symbol': symbol,
+            'row_type': row_type if len(parts) == 3 else None,
             'timestamp': actual_ts,
             'timestamp_time': datetime.fromtimestamp(actual_ts / 1000).isoformat(),
             'source': 'speed',
@@ -354,25 +420,35 @@ class MergeEngine:
         window_count: int = 96  # 24 hours of 15-min windows
     ) -> Dict:
         """
-        Calculate prediction accuracy for recent windows.
+        Calculate prediction accuracy for available batch data.
         
         Args:
             symbol: Cryptocurrency symbol
-            window_count: Number of windows to analyze
+            window_count: Maximum number of windows to analyze (not used as hard filter)
             
         Returns:
             Dict with accuracy statistics
         """
-        now = int(time.time())
-        start_ts = now - (window_count * 15 * 60)  # 15 min per window
+        # Query ALL batch data for this symbol (use very wide time range)
+        # This handles the case where VM clock differs from data timestamps
+        start_ts = 0  # Beginning of time
+        end_ts = 9999999999  # Year ~2286
         
-        analytics = self._query_batch_layer(symbol, start_ts, now)
+        analytics = self._query_batch_layer(symbol, start_ts, end_ts)
+        
+        # Limit to most recent windows if we have more than window_count
+        if len(analytics) > window_count:
+            analytics = sorted(analytics, key=lambda x: x['window_end_ts'], reverse=True)[:window_count]
         
         if not analytics:
             return {'symbol': symbol, 'windows_analyzed': 0, 'accuracy': None}
         
         correct = sum(1 for r in analytics if r['analysis'].get('result', '').startswith('CORRECT'))
         total = len(analytics)
+        
+        # Get actual time range from data
+        min_ts = min(r['window_end_ts'] for r in analytics)
+        max_ts = max(r['window_end_ts'] for r in analytics)
         
         return {
             'symbol': symbol,
@@ -381,8 +457,8 @@ class MergeEngine:
             'wrong_predictions': total - correct,
             'accuracy': correct / total if total > 0 else 0,
             'time_range': {
-                'start': datetime.fromtimestamp(start_ts).isoformat(),
-                'end': datetime.fromtimestamp(now).isoformat()
+                'start': datetime.fromtimestamp(min_ts).isoformat(),
+                'end': datetime.fromtimestamp(max_ts).isoformat()
             }
         }
 

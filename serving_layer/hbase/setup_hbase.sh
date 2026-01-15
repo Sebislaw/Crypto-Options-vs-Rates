@@ -94,11 +94,14 @@ create_table_if_not_exists "market_analytics" \
     "{NAME => 'price_data', VERSIONS => 1, COMPRESSION => 'GZ', TTL => 31536000}, {NAME => 'bet_data', VERSIONS => 1, COMPRESSION => 'GZ', TTL => 31536000}, {NAME => 'analysis', VERSIONS => 1, COMPRESSION => 'GZ', TTL => 31536000}"
 
 # Market Live Table (Speed Layer)
-# Column Family: d (compact name for live data)
+# Column Families:
+#   d: Legacy live data (kept for compatibility)
+#   b: Binance 1-min window aggregations
+#   p: Polymarket order book aggregations  
+#   t: Polymarket trade aggregations
 # 1-day TTL (86400 seconds) - only recent data needed
-# Using GZ compression
 create_table_if_not_exists "market_live" \
-    "{NAME => 'd', VERSIONS => 1, COMPRESSION => 'GZ', TTL => 86400}"
+    "{NAME => 'd', VERSIONS => 1, COMPRESSION => 'GZ', TTL => 86400}, {NAME => 'b', VERSIONS => 1, COMPRESSION => 'GZ', TTL => 86400}, {NAME => 'p', VERSIONS => 1, COMPRESSION => 'GZ', TTL => 86400}, {NAME => 't', VERSIONS => 1, COMPRESSION => 'GZ', TTL => 86400}"
 
 # ------------------------------------------------------------------------------
 # 4. Verify Tables

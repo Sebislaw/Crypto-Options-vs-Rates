@@ -88,6 +88,13 @@ python -m pytest tests/functional_tests/test_data_integrity.py -v 2>&1 | tee -a 
 INTEGRITY_RESULT=${PIPESTATUS[0]}
 
 echo ""
+echo "--------------------------------------------------"
+echo "Running Speed Layer HBase Tests..."
+echo "--------------------------------------------------"
+python -m pytest tests/functional_tests/test_speed_layer_hbase.py -v 2>&1 | tee -a "$EVIDENCE_FILE"
+SPEED_RESULT=${PIPESTATUS[0]}
+
+echo ""
 echo "=================================================="
 echo "   Test Summary"
 echo "=================================================="
@@ -104,12 +111,18 @@ else
     echo "✗ Data Integrity Tests: FAILED"
 fi
 
+if [ $SPEED_RESULT -eq 0 ]; then
+    echo "✓ Speed Layer HBase Tests: PASSED"
+else
+    echo "✗ Speed Layer HBase Tests: FAILED"
+fi
+
 echo ""
 echo "Evidence saved to: $EVIDENCE_FILE"
 echo "=================================================="
 
 # Exit with appropriate code
-if [ $HBASE_RESULT -eq 0 ] && [ $INTEGRITY_RESULT -eq 0 ]; then
+if [ $HBASE_RESULT -eq 0 ] && [ $INTEGRITY_RESULT -eq 0 ] && [ $SPEED_RESULT -eq 0 ]; then
     exit 0
 else
     exit 1

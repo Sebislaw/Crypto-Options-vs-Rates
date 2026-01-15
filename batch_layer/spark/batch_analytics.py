@@ -549,24 +549,26 @@ def main(date_filter=None):
         ).show(5, truncate=False)
         
         # Step 4: Prepare for HBase
-        # TODO: HBase integration not yet implemented - will be added in future PR
-        # print("\n[5/6] Preparing HBase output format...")
-        # hbase_df = prepare_hbase_output(analysis_df)
+        print("\n[5/7] Preparing HBase output format...")
+        hbase_df = prepare_hbase_output(analysis_df)
+        hbase_df.cache()
+        print(f"      Prepared {hbase_df.count()} records for HBase")
         
-        # Step 5: Save results to Parquet (always)
-        print("\n[5/5] Saving results to HDFS...")
+        # Step 5: Save results to Parquet (always as backup)
+        print("\n[6/7] Saving results to HDFS (backup)...")
         backup_path = "/user/vagrant/batch/analytics_results"
         save_as_parquet_backup(analysis_df, backup_path)
         
-        # Step 6: Write to HBase (NOT YET IMPLEMENTED)
-        # TODO: HBase integration will be implemented in a future PR after merging functional components
-        # print("\n[6/6] Writing to HBase...")
-        # try:
-        #     write_to_hbase(hbase_df)
-        #     print("      Successfully wrote to HBase!")
-        # except Exception as e:
-        #     print(f"      HBase write skipped (happybase not available)")
-        #     print(f"      Results saved to: {backup_path}")
+        # Step 6: Write to HBase
+        print("\n[7/7] Writing to HBase...")
+        try:
+            write_to_hbase(hbase_df)
+            print("      Successfully wrote batch results to HBase!")
+        except Exception as e:
+            print(f"      [WARNING] HBase write failed: {e}")
+            print(f"      Batch results still available at: {backup_path}")
+            import traceback
+            traceback.print_exc()
         
         print(f"\n      Results saved to: {backup_path}")
         
