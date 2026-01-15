@@ -39,19 +39,13 @@ Utility and **operational scripts**:
 - Example commands for running collectors, Spark jobs, or data loading tasks.
 - Batch execution and administrative scripts for the Hadoop ecosystem tools.
 
-### `configs/`
-Holds **template configuration files** (without secrets):
-- Configuration samples for NiFi processors, Kafka, Spark, and HBase.
-
 ### `tests/`
 Contains **functional test plans** and fixtures:
 - **`functional_tests/`** – Markdown test cases describing goals, steps, expected results, and evidence placeholders.
 - **`unit_tests/`** – Automated unit tests for individual code components.
 
 ### `report/`
-Project documentation:
-- **`assets/`** – Assets used in report.
-- Final report.
+Project documentation.
 
 ### `requirements/`
 Lists dependencies required for used technologies.
@@ -81,10 +75,8 @@ root:
 ├── serving_layer/
 │   ├── hbase/
 │   └── merge/
-├── configs/
 ├── console_scripts/
 ├── report/
-│   └── assets/
 ├── requirements/
 └── tests/
     ├── functional_tests/
