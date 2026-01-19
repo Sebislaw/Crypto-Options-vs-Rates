@@ -11,6 +11,10 @@ BATCH_DIR="$PROJECT_ROOT/batch_layer"
 SPARK_SCRIPT="$BATCH_DIR/spark/batch_analytics.py"
 LOG_DIR="$PROJECT_ROOT/logs"
 
+# Configure PySpark to use the Conda venv Python (where happybase is installed)
+export PYSPARK_PYTHON="$HOME/miniconda3/envs/venv/bin/python"
+export PYSPARK_DRIVER_PYTHON="$HOME/miniconda3/envs/venv/bin/python"
+
 # Create log directory
 mkdir -p "$LOG_DIR"
 
@@ -38,6 +42,25 @@ if ! echo "status" | hbase shell -n > /dev/null 2>&1; then
     exit 1
 fi
 echo "  ✓ HBase is running"
+
+# Check if HBase Thrift server is running (required for happybase)
+if ! nc -z localhost 9090 2>/dev/null; then
+    echo "  ⚠ HBase Thrift server not running on port 9090. Starting..."
+    nohup hbase thrift start -p 9090 > /dev/null 2>&1 &
+    # Wait for Thrift to start
+    for i in {1..10}; do
+        if nc -z localhost 9090 2>/dev/null; then
+            echo "  ✓ HBase Thrift server started on port 9090"
+            break
+        fi
+        sleep 1
+    done
+    if ! nc -z localhost 9090 2>/dev/null; then
+        echo "[WARNING] Could not start HBase Thrift server. HBase writes may fail."
+    fi
+else
+    echo "  ✓ HBase Thrift server is running on port 9090"
+fi
 
 # Check if Spark is available
 if ! command -v spark-submit &> /dev/null; then

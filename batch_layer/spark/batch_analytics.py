@@ -454,15 +454,18 @@ def write_to_hbase(df):
             # Final commit
             batch.send()
             connection.close()
-            print(f"Wrote {count} records to HBase")
+            # Only log if we actually wrote something (reduces noise from empty partitions)
+            if count > 0:
+                print(f"Wrote {count} records to HBase")
             
         except Exception as e:
             print(f"Error writing to HBase: {e}")
             import traceback
             traceback.print_exc()
     
-    # Convert to RDD and write
-    df.foreachPartition(write_partition)
+    # Coalesce to reduce empty partitions, then write
+    # Use coalesce(4) to limit partitions while preserving data
+    df.coalesce(4).foreachPartition(write_partition)
 
 
 def save_as_parquet_backup(df, output_path):
